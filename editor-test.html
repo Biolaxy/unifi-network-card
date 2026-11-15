@@ -8,7 +8,7 @@ customElements.define("ha-form", class extends HTMLElement {
   emit(data) { this.dispatchEvent(new CustomEvent("value-changed", { detail: { value: data } })); }
 });
 </script>
-<script src="unifi-network-card.js"></script>
+<script>document.write('<script src="unifi-network-card.js?t=' + Date.now() + '"><\/script>');</script>
 <script>
 const hass = {
   states: {},

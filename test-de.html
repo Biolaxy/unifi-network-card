@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UniFi Card Test (deutsche Entitäten)</title>
+<style>
+  :root { --primary-text-color:#1c1c1c; --secondary-text-color:#6b6f75; --secondary-background-color:#f2f3f5; --divider-color:#e3e3e3; }
+  body { background:#f5f5f5; font-family:Roboto,system-ui,sans-serif; margin:0; padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(340px,520px)); }
+  ha-icon { display:none; }
+  pre { grid-column:1/-1; font-size:12px; }
+</style>
+</head>
+<body>
+<script>document.write('<script src="unifi-network-card.js?t=' + Date.now() + '"><\/script>');</script>
+<script>
+// Nachbildung der UniFi-Entitäten einer deutschsprachigen HA-Installation (Dream Router 7 + U7 Lite)
+const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
+function build(allEnabled) {
+  const states = {}, entities = {};
+  const add = (id, dev, state, attrs = {}, enabledByDefault = true) => {
+    if (!enabledByDefault && !allEnabled) return; // deaktivierte Entitäten fehlen im Frontend
+    states[id] = { state: String(state), attributes: attrs, last_updated: ago(3) };
+    entities[id] = { entity_id: id, device_id: dev, platform: "unifi" };
+  };
+  const R = "udr", A = "ap";
+  add("button.dream_router_7_neu_starten", R, "unknown", { device_class: "restart", friendly_name: "Dream Router 7 Neu starten" });
+  add("button.dream_router_7_port_1_aus_und_einschalten", R, "unknown", { device_class: "restart", friendly_name: "Dream Router 7 Port 1 aus- und einschalten" });
+  add("sensor.dream_router_7_betriebszeit", R, ago(86400 * 1 + 3600 * 13), { device_class: "timestamp", friendly_name: "Dream Router 7 Betriebszeit" });
+  add("sensor.dream_router_7_zustand", R, "connected", { device_class: "enum", options: ["connected", "disconnected", "upgrading"], friendly_name: "Dream Router 7 Zustand" });
+  add("sensor.dream_router_7_cpu_auslastung", R, 57.7, { unit_of_measurement: "%", friendly_name: "Dream Router 7 CPU-Auslastung" });
+  add("sensor.dream_router_7_speicherauslastung", R, 58.3, { unit_of_measurement: "%", friendly_name: "Dream Router 7 Speicherauslastung" });
+  add("update.dream_router_7_firmware", R, "off", { device_class: "firmware", installed_version: "6.0.17", latest_version: "6.0.17" });
+  add("sensor.dream_router_7_clients", R, 27, { friendly_name: "Dream Router 7 Clients" }, false);
+  add("sensor.dream_router_7_cpu_temperatur", R, 61, { device_class: "temperature", unit_of_measurement: "°C", friendly_name: "Dream Router 7 CPU Temperatur" }, false);
+  add("sensor.dream_router_7_cloudflare_wan_latenz", R, 9, { device_class: "duration", unit_of_measurement: "ms", friendly_name: "Dream Router 7 Cloudflare WAN Latenz" }, false);
+  [[1, 1000], [2, 1000], [3, 0], [4, 2500]].forEach(([n, sp]) => {
+    add(`sensor.dream_router_7_port_${n}_verbindungsgeschwindigkeit`, R, sp, { device_class: "data_rate", unit_of_measurement: "Mbit/s", friendly_name: `Dream Router 7 Port ${n} Verbindungsgeschwindigkeit` }, false);
+    add(`switch.dream_router_7_port_${n}`, R, "on", { friendly_name: `Dream Router 7 Port ${n}` }, false);
+  });
+  add("sensor.dream_router_7_sfp_1_verbindungsgeschwindigkeit", R, 10000, { device_class: "data_rate", unit_of_measurement: "Mbit/s", friendly_name: "Dream Router 7 SFP+ Verbindungsgeschwindigkeit" }, false);
+  add("switch.dream_router_7_sfp_1", R, "on", { friendly_name: "Dream Router 7 SFP+" }, false);
+  add("switch.dream_router_7_port_1_poe", R, "on", { device_class: "outlet", friendly_name: "Dream Router 7 Port 1 PoE" }, false);
+  add("sensor.dream_router_7_port_1_poe_leistung", R, 4.3, { device_class: "power", unit_of_measurement: "W", friendly_name: "Dream Router 7 Port 1 PoE-Leistung" }, false);
+  add("button.u7_lite_neu_starten", A, "unknown", { device_class: "restart", friendly_name: "U7 Lite Neu starten" });
+  add("light.u7_lite_led", A, "on", {});
+  add("sensor.u7_lite_betriebszeit", A, ago(86400 * 2 + 3600 * 7), { device_class: "timestamp", friendly_name: "U7 Lite Betriebszeit" });
+  add("sensor.u7_lite_uplink_mac", A, "90:41:b2:82:ca:fe", { friendly_name: "U7 Lite Uplink-MAC" });
+  add("sensor.u7_lite_zustand", A, "connected", { device_class: "enum", options: ["connected", "disconnected"], friendly_name: "U7 Lite Zustand" });
+  add("sensor.u7_lite_cpu_auslastung", A, 1.7, { unit_of_measurement: "%", friendly_name: "U7 Lite CPU-Auslastung" });
+  add("sensor.u7_lite_speicherauslastung", A, 60.4, { unit_of_measurement: "%", friendly_name: "U7 Lite Speicherauslastung" });
+  add("update.u7_lite_firmware", A, "off", { device_class: "firmware", installed_version: "8.8.14", latest_version: "8.8.14" });
+  add("sensor.u7_lite_clients", A, 12, { friendly_name: "U7 Lite Clients" }, false);
+  return {
+    states, entities,
+    devices: {
+      udr: { id: "udr", name: "Dream Router 7", model: "UDMA67A", manufacturer: "Ubiquiti Networks", sw_version: "6.0.17.36539" },
+      ap: { id: "ap", name: "U7 Lite", model: "UAPA693", manufacturer: "Ubiquiti Networks", sw_version: "8.8.14.20179" },
+    },
+    callService: () => {},
+  };
+}
+const mk = (title, hass) => { const c = document.createElement("unifi-network-card"); c.setConfig({ title }); c.hass = hass; document.body.appendChild(c); return c; };
+const a = mk("Wie jetzt (Sensoren teils deaktiviert)", build(false));
+const b = mk("Mit allen Sensoren aktiviert", build(true));
+// Prüfungen
+const res = [];
+const ok = (n, c, i) => res.push(`${c ? "✅" : "❌"} ${n}${c ? "" : " → " + JSON.stringify(i)}`);
+const h = build(true);
+const dU = discover(h, "udr"), dA = discover(h, "ap");
+ok("UDR7: Betriebszeit erkannt", dU.uptime === "sensor.dream_router_7_betriebszeit", dU.uptime);
+ok("UDR7: Zustand erkannt", dU.state === "sensor.dream_router_7_zustand", dU.state);
+ok("UDR7: CPU nicht von Temperatur überschrieben", dU.cpu === "sensor.dream_router_7_cpu_auslastung", dU.cpu);
+ok("UDR7: Temperatur erkannt", dU.temp === "sensor.dream_router_7_cpu_temperatur", dU.temp);
+ok("UDR7: RAM erkannt", dU.mem === "sensor.dream_router_7_speicherauslastung", dU.mem);
+ok("UDR7: Clients erkannt", dU.clients === "sensor.dream_router_7_clients", dU.clients);
+ok("UDR7: Neustart (nicht Port-Neustart)", dU.restart === "button.dream_router_7_neu_starten", dU.restart);
+ok("UDR7: Latenz erkannt", dU.latency === "sensor.dream_router_7_cloudflare_wan_latenz", dU.latency);
+ok("UDR7: 5 Ports inkl. SFP+", dU.ports.length === 5 && dU.ports[4].key.endsWith("sfp_1"), dU.ports.map((p) => p.key));
+ok("UDR7: Port 1 PoE + Leistung + Aus/Ein", !!(dU.ports[0].poe && dU.ports[0].poe_power && dU.ports[0].cycle), dU.ports[0]);
+ok("UDR7: Profil = Dream Router 7", detectProfile(h.devices.udr, dU).key === "udr7");
+ok("U7 Lite: Profil = U7 Lite", detectProfile(h.devices.ap, dA).key === "u7lite");
+ok("U7 Lite: Betriebszeit/Zustand/Neustart", dA.uptime && dA.state && dA.restart === "button.u7_lite_neu_starten", dA);
+ok("Port-Beschriftung SFP+", b.shadowRoot.textContent.includes("SFP+"), "");
+ok("Status Online (Zustand)", a.shadowRoot.querySelector(".pill").textContent === "Online");
+const pre = document.createElement("pre"); pre.textContent = res.join("\n") + `\n${res.filter((x) => x.startsWith("❌")).length} Fehler`; document.body.appendChild(pre);
+</script>
+</body>
+</html>

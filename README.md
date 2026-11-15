@@ -33,7 +33,7 @@ Updates erscheinen danach automatisch in HACS.
 
 1. `unifi-network-card.js` nach `/config/www/` kopieren (z. B. mit der App „File editor“ oder „Samba share“).
 2. **Einstellungen → Dashboards → ⋮ → Ressourcen → Ressource hinzufügen**
-   - URL: `/local/unifi-network-card.js?v=1.3.0`
+   - URL: `/local/unifi-network-card.js?v=1.3.1`
    - Typ: **JavaScript-Modul**
 3. Browser-Cache leeren bzw. Seite neu laden (Strg/Cmd + Shift + R).
 4. Im Dashboard **Karte hinzufügen → „UniFi Network Card“** wählen.
@@ -46,8 +46,11 @@ Viele UniFi-Sensoren sind standardmäßig **deaktiviert**. Damit die Karte etwas
 **Einstellungen → Geräte & Dienste → UniFi Network → Gerät (z. B. UDR7) → Entitäten**
 und u. a. diese aktivieren:
 
-- *Uptime*, *State*, *Clients*, *CPU utilization*, *Memory utilization*, *Temperature*
-- je Port: *RX*, *TX*, *Link speed* (falls vorhanden), *PoE*, *PoE Power*
+- *Clients*, *CPU-Temperatur*, *WAN-Latenz* (z. B. Cloudflare)
+- je Port: *Verbindungsgeschwindigkeit* (auch SFP+), *PoE*, *PoE-Leistung*
+
+*Betriebszeit*, *Zustand*, *CPU-* und *Speicherauslastung* sind bereits aktiv. Die Karte erkennt die
+Sensoren am Typ und an englischen wie deutschen Namen, funktioniert also unabhängig von der HA-Sprache.
 
 ## Konfiguration – komplett grafisch
 
@@ -99,7 +102,7 @@ beim Öffnen im Editor automatisch übernommen.
 ## Testen ohne Home Assistant
 
 `test.html` enthält simulierte Daten (UDR7, U7 Lite online/offline), `editor-test.html` prüft die
-Logik des grafischen Editors. Im Ordner einen
+Logik des grafischen Editors, `test-de.html` die Erkennung deutscher Entitäten (Dream Router 7 / U7 Lite). Im Ordner einen
 lokalen Webserver starten und `http://localhost:8765/test.html` öffnen (`#dark` für Dunkelmodus):
 
 ```bash

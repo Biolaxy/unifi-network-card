@@ -14,7 +14,7 @@
 </head>
 <body>
 <script>if (location.hash === "#dark") document.body.classList.add("dark");</script>
-<script src="unifi-network-card.js"></script>
+<script>document.write('<script src="unifi-network-card.js?t=' + Date.now() + '"><\/script>');</script>
 <script>
 const now = Date.now();
 const ago = (s) => new Date(now - s * 1000).toISOString();

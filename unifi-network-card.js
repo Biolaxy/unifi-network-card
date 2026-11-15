@@ -3,7 +3,7 @@
  * Realistische SVG-Darstellung (UDR7, U7 Lite, generische APs/Switches/Gateways),
  * automatische Entitätserkennung pro Gerät, Ports, Clients, Firmware, Neustart.
  */
-const UNC_VERSION = "1.3.0";
+const UNC_VERSION = "1.3.1";
 
 /* ---------- Hilfsfunktionen ---------- */
 const esc = (s) =>
@@ -51,9 +51,9 @@ const fmtUptime = (hass, id) => {
 
 /* ---------- Geräteprofile ---------- */
 const PROFILES = [
-  { key: "udr7", re: /udr\s*-?\s*7|dream\s*router\s*7/i, kind: "gateway", art: "udr7", photo: "udr7", label: "UniFi Dream Router 7" },
+  { key: "udr7", re: /udr\s*-?\s*7|dream\s*router\s*7|udma67a/i, kind: "gateway", art: "udr7", photo: "udr7", label: "UniFi Dream Router 7" },
   { key: "udr", re: /\budr\b|dream\s*router/i, kind: "gateway", art: "udr7", label: "UniFi Dream Router" },
-  { key: "u7lite", re: /u7[\s-]*lite|\bu7lt\b|\bual7\b/i, kind: "ap", art: "ap-round", photo: "u7lite", label: "U7 Lite" },
+  { key: "u7lite", re: /u7[\s-]*lite|\bu7lt\b|\bual7\b|uapa693/i, kind: "ap", art: "ap-round", photo: "u7lite", label: "U7 Lite" },
   { key: "u6lite", re: /u6[\s-]*lite|\bual6\b/i, kind: "ap", art: "ap-round", label: "U6 Lite" },
   { key: "ap-square", re: /u7[\s-]*(pro|max)|u6[\s-]*(pro|enterprise|\+|plus)|\buap\b|ac[\s-]*pro/i, kind: "ap", art: "ap-square" },
   { key: "ap-round", re: /\bu[67]\b|nano|ac[\s-]*lite|lr\b|access\s*point/i, kind: "ap", art: "ap-round" },
@@ -85,10 +85,15 @@ function detectProfile(device, disc, override) {
 }
 
 /* ---------- Entitäten eines Geräts finden ---------- */
+// Suffixe der Port-Entitäten (englisch + deutsch, da die Entity-IDs in der HA-Sprache angelegt werden)
 const PORT_SUFFIX = [
-  ["poe_power", /_poe_power$/], ["cycle", /_power_cycle$/], ["poe", /_poe$/],
-  ["speed", /_link_speed$|_speed$/], ["rx", /_rx$/], ["tx", /_tx$/],
+  ["poe_power", /_poe_power$|_poe_leistung$/],
+  ["cycle", /_power_cycle$|_aus_und_einschalten$/],
+  ["poe", /_poe$/],
+  ["speed", /_link_speed$|_verbindungsgeschwindigkeit$|_speed$/],
+  ["rx", /_rx$/], ["tx", /_tx$/],
 ];
+const PORT_LABEL_SUFFIX = /\s*(RX|TX|PoE([- ](Power|Leistung))?|Link Speed|Verbindungsgeschwindigkeit|Power Cycle|aus- und einschalten)\s*$/i;
 
 function discover(hass, deviceId) {
   const ents = Object.values(hass.entities || {}).filter((e) => e.device_id === deviceId && !e.hidden);
@@ -98,21 +103,25 @@ function discover(hass, deviceId) {
     const id = e.entity_id;
     const [domain, obj] = id.split(".");
     const tk = (e.translation_key || "").toLowerCase();
+    const attrs = hass.states[id]?.attributes || {};
+    const dc = attrs.device_class || "";
+    const unit = attrs.unit_of_measurement || "";
     r.ids.push(id);
 
-    // Port-Entitäten
+    // Port-Entitäten (Port 1…n und SFP)
     let portKey = null, kind = null;
+    const isPortish = /(^|_)(port|sfp)_\d+/.test(obj) || /port/.test(tk);
     for (const [k, re] of PORT_SUFFIX) {
-      if (re.test(obj) && (/port/.test(obj) || /port/.test(tk) || k === "poe" || k === "poe_power" || k === "cycle")) {
+      if (re.test(obj) && (isPortish || k === "poe" || k === "poe_power" || k === "cycle")) {
         portKey = obj.replace(re, ""); kind = k; break;
       }
     }
-    if (!portKey && domain === "switch" && /_port_\d+$/.test(obj)) { portKey = obj; kind = "enable"; }
+    if (!portKey && domain === "switch" && /_(port|sfp)_\d+$/.test(obj)) { portKey = obj; kind = "enable"; }
     if (portKey && !(domain === "sensor" && kind === "poe")) {
-      const m = portKey.match(/port_(\d+)$/) || portKey.match(/(\d+)$/);
-      const p = portMap.get(portKey) || { key: portKey, n: m ? +m[1] : 999 };
       if (kind === "poe" && domain !== "switch") continue;
       if (kind === "cycle" && domain !== "button") continue;
+      const m = portKey.match(/(port|sfp)_(\d+)$/) || portKey.match(/()(\d+)$/);
+      const p = portMap.get(portKey) || { key: portKey, n: m ? +m[2] + (m[1] === "sfp" ? 100 : 0) : 999 };
       p[kind] = id;
       portMap.set(portKey, p);
       continue;
@@ -120,21 +129,23 @@ function discover(hass, deviceId) {
 
     const t = (re) => re.test(obj) || (tk !== "" && re.test(tk));
     if (domain === "update") r.update = id;
-    else if (domain === "button" && t(/restart|reboot/)) r.restart = id;
+    else if (domain === "button" && (dc === "restart" || t(/restart|reboot|neu_?starten/))) r.restart = id;
     else if (domain === "device_tracker") r.tracker = id;
     else if (domain === "sensor") {
-      if (t(/uptime/)) r.uptime = id;
+      if (dc === "uptime" || t(/uptime|betriebszeit/)) r.uptime = id;
+      else if (dc === "temperature" || t(/temperat|_temp(_|$)/)) { if (!r.temp || /cpu/.test(obj)) r.temp = id; }
+      else if (t(/latency|latenz/)) { if (!r.latency) r.latency = id; }
       else if (t(/cpu/)) r.cpu = id;
-      else if (t(/memory|_mem(_|$)|_ram(_|$)/)) r.mem = id;
-      else if (t(/temperature|_temp(_|$)/)) r.temp = id;
+      else if (t(/memory|speicher|_mem(_|$)|_ram(_|$)/)) r.mem = id;
       else if (t(/clients/)) r.clients = id;
-      else if (t(/_state$|device_state/)) r.state = id;
+      else if ((dc === "enum" && (attrs.options || []).includes("connected")) || t(/_state$|_zustand$|device_state/)) r.state = id;
       else if (t(/wan.*(rx|download)|download/)) r.wanRx = id;
       else if (t(/wan.*(tx|upload)|upload/)) r.wanTx = id;
-      else if (t(/ac_power|power_consumption|_power$/)) r.power = id;
+      else if (dc === "power" || t(/ac_power|power_consumption|_power$|leistungsaufnahme/)) r.power = id;
     }
+    void unit;
   }
-  r.ports = [...portMap.values()].filter((p) => p.rx || p.tx || p.poe || p.speed || p.enable).sort((a, b) => a.n - b.n);
+  r.ports = [...portMap.values()].filter((p) => p.rx || p.tx || p.poe || p.speed || p.enable || p.poe_power).sort((a, b) => a.n - b.n);
   return r;
 }
 
@@ -260,7 +271,7 @@ function artSwitch(p, led, online, n) {
 /* ---------- Ports (Rückseite) ---------- */
 function portInfo(hass, port) {
   const rx = rateMbit(hass, port.rx), tx = rateMbit(hass, port.tx);
-  const speed = num(hass, port.speed);
+  const speed = rateMbit(hass, port.speed);
   const poeOn = port.poe ? hass.states[port.poe]?.state === "on" : false;
   const poeW = num(hass, port.poe_power);
   const enabled = port.enable ? hass.states[port.enable]?.state !== "off" : true;
@@ -278,8 +289,8 @@ function portInfo(hass, port) {
 function portLabel(port, info, deviceName) {
   let l = info.fn;
   if (deviceName && l.toLowerCase().startsWith(deviceName.toLowerCase())) l = l.slice(deviceName.length).trim();
-  l = l.replace(/\s*(RX|TX|PoE( Power)?|Link Speed|Power Cycle)\s*$/i, "").trim();
-  if (!l || /^\d+$/.test(l)) l = `Port ${port.n === 999 ? "?" : port.n}`;
+  l = l.replace(PORT_LABEL_SUFFIX, "").trim();
+  if (!l || /^\d+$/.test(l)) l = port.n >= 100 && port.n < 999 ? "SFP+" : `Port ${port.n === 999 ? "?" : port.n}`;
   return l.replace(/^Port\s+/i, "P");
 }
 
@@ -524,6 +535,7 @@ class UnifiNetworkCard extends HTMLElement {
       stat("mdi:upload", "Upload", tx !== null ? fmtMbit(tx) : null, d.wanTx || d.ports[0]?.tx),
       stat("mdi:cpu-64-bit", "CPU", cpu !== null ? `${cpu.toFixed(0)} %` : null, d.cpu, cpu),
       stat("mdi:memory", "RAM", mem !== null ? `${mem.toFixed(0)} %` : null, d.mem, mem),
+      stat("mdi:speedometer", "Latenz", num(h, d.latency) !== null ? `${num(h, d.latency).toFixed(0)} ms` : null, d.latency),
       stat("mdi:thermometer", "Temperatur", temp !== null ? `${temp.toFixed(0)} °C` : null, d.temp),
       stat("mdi:flash", "PoE", poeTotal > 0 ? `${poeTotal.toFixed(1)} W` : null, d.ports.find((p) => p.poe_power)?.poe_power),
       stat("mdi:lightning-bolt", "Leistung", power !== null ? `${power.toFixed(1)} W` : null, d.power),
