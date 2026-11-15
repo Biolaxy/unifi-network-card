@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UniFi Card Test</title>
+<style>
+  :root { --primary-text-color:#1c1c1c; --secondary-text-color:#6b6f75; --secondary-background-color:#f2f3f5; --divider-color:#e3e3e3; }
+  body { background:#f5f5f5; font-family:Roboto,system-ui,sans-serif; margin:0; padding:16px; display:grid; gap:16px; grid-template-columns:repeat(auto-fill,minmax(340px,520px)); }
+  body.dark { --primary-text-color:#e1e1e1; --secondary-text-color:#9b9b9b; --secondary-background-color:#2a2a2c; --divider-color:#333; background:#111; }
+  ha-card { display:block; background:var(--card-background-color,#fff); border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.12); }
+  body.dark ha-card { --card-background-color:#1c1c1e; }
+  ha-icon { display:none; }
+</style>
+</head>
+<body>
+<script>if (location.hash === "#dark") document.body.classList.add("dark");</script>
+<script src="unifi-network-card.js"></script>
+<script>
+const now = Date.now();
+const ago = (s) => new Date(now - s * 1000).toISOString();
+const S = (state, attrs = {}) => ({ state: String(state), attributes: attrs, last_updated: ago(5) });
+const states = {}, entities = {};
+const add = (id, dev, state, attrs = {}, extra = {}) => {
+  states[id] = S(state, attrs);
+  entities[id] = { entity_id: id, device_id: dev, platform: "unifi", ...extra };
+};
+// UDR7
+add("sensor.udr7_state", "udr", "connected");
+add("sensor.udr7_uptime", "udr", ago(86400 * 12 + 3600 * 5), { device_class: "timestamp" });
+add("sensor.udr7_cpu_utilization", "udr", 23);
+add("sensor.udr7_memory_utilization", "udr", 61);
+add("sensor.udr7_temperature", "udr", 54);
+add("sensor.udr7_clients", "udr", 31);
+add("update.udr7", "udr", "on", { installed_version: "4.1.13", latest_version: "4.2.8" });
+add("button.udr7_restart", "udr", "unknown");
+const udrPorts = [["Port 1", 1000, 12.3, 1.2, true, 4.1], ["Port 2", 1000, 0.4, 0.1, false], ["Port 3", 0, 0, 0, false], ["Port 4", 2500, 3.1, 0.9, false], ["Internet", 10000, 54.2, 6.7, false]];
+udrPorts.forEach(([n, sp, rx, tx, poe, w], i) => {
+  const k = `udr7_port_${i + 1}`, fn = `UDR7 ${n}`;
+  add(`sensor.${k}_rx`, "udr", rx, { unit_of_measurement: "MB/s", friendly_name: `${fn} RX` });
+  add(`sensor.${k}_tx`, "udr", tx, { unit_of_measurement: "MB/s", friendly_name: `${fn} TX` });
+  add(`sensor.${k}_link_speed`, "udr", sp, { unit_of_measurement: "Mbit/s", friendly_name: `${fn} Link Speed` });
+  if (i < 2) {
+    add(`switch.${k}_poe`, "udr", poe ? "on" : "off", { friendly_name: `${fn} PoE` });
+    add(`sensor.${k}_poe_power`, "udr", poe ? w : 0, { unit_of_measurement: "W", friendly_name: `${fn} PoE Power` });
+  }
+});
+// U7 Lite
+add("sensor.u7_lite_flur_state", "ap1", "connected");
+add("sensor.u7_lite_flur_uptime", "ap1", ago(86400 * 3 + 7200));
+add("sensor.u7_lite_flur_clients", "ap1", 14);
+add("sensor.u7_lite_flur_temperature", "ap1", 47);
+add("update.u7_lite_flur", "ap1", "off", { installed_version: "8.0.21", latest_version: "8.0.21" });
+add("button.u7_lite_flur_restart", "ap1", "unknown");
+// U7 Lite offline
+add("sensor.u7_lite_garten_state", "ap2", "disconnected");
+add("sensor.u7_lite_garten_clients", "ap2", "unavailable");
+add("update.u7_lite_garten", "ap2", "off", { installed_version: "8.0.21" });
+
+const hass = {
+  states, entities,
+  devices: {
+    udr: { id: "udr", name: "UDR7", model: "UniFi Dream Router 7", manufacturer: "Ubiquiti Networks", sw_version: "4.1.13" },
+    ap1: { id: "ap1", name: "AP Flur", model: "U7 Lite", manufacturer: "Ubiquiti Networks", sw_version: "8.0.21" },
+    ap2: { id: "ap2", name: "AP Garten", model: "U7LT", manufacturer: "Ubiquiti Networks", sw_version: "8.0.21" },
+  },
+  callService: (...a) => console.log("callService", a),
+};
+const mk = (cfg) => { const c = document.createElement("unifi-network-card"); c.setConfig(cfg); c.hass = hass; document.body.appendChild(c); return c; };
+mk({ title: "Netzwerk" });
+mk({ devices: ["ap1"] });
+</script>
+</body>
+</html>
