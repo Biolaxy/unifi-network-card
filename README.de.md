@@ -10,8 +10,8 @@ YAML ist nicht nötig.
 
 <table>
   <tr>
-    <td><img src="docs/overview-light.png" alt="Karte im hellen Design" width="380"></td>
-    <td><img src="docs/overview-dark.png" alt="Karte im dunklen Design" width="380"></td>
+    <td><img src="docs/overview-light-de.png" alt="Karte im hellen Design" width="380"></td>
+    <td><img src="docs/overview-dark-de.png" alt="Karte im dunklen Design" width="380"></td>
   </tr>
 </table>
 
@@ -30,10 +30,11 @@ YAML ist nicht nötig.
 - Clients, Laufzeit, CPU, RAM, Temperatur, WAN-Latenz, PoE-Verbrauch, Firmware-Version mit Update-Hinweis,
   Neustart-Button (mit Rückfrage).
 - Design **hell, dunkel oder automatisch** (folgt dem Home-Assistant-Theme).
-- **Sprachunabhängig**: Sensoren werden am Typ und an englischen wie deutschen Namen erkannt.
+- Oberfläche auf **Deutsch und Englisch**, automatisch passend zur Sprache von Home Assistant (oder fest einstellbar).
+- Funktioniert mit jeder Home-Assistant-Sprache: Sensoren werden am Typ und an englischen wie deutschen Namen erkannt.
 - Klick auf Werte, Ports oder Foto öffnet die Details, Klick auf den Gerätenamen die Geräteseite.
 
-<img src="docs/gallery.png" alt="Galerie unterstützter Geräte" width="780">
+<img src="docs/gallery-de.png" alt="Galerie unterstützter Geräte" width="780">
 
 ## Installation
 
@@ -48,7 +49,7 @@ YAML ist nicht nötig.
 
 1. `unifi-network-card.js` nach `/config/www/` kopieren.
 2. **Einstellungen → Dashboards → ⋮ → Ressourcen → Ressource hinzufügen**
-   - URL: `/local/unifi-network-card.js?v=1.4.0`
+   - URL: `/local/unifi-network-card.js?v=1.5.0`
    - Typ: **JavaScript-Modul**
 3. Seite neu laden (Strg/Cmd + Shift + R) und die Karte hinzufügen.
 
@@ -64,12 +65,12 @@ unter **Einstellungen → Geräte & Dienste → UniFi Network → dein Gerät �
 
 ## Konfiguration (grafischer Editor)
 
-**Darstellung:** Titel, Design (Automatisch / Hell / Dunkel), Original-Produktfotos an/aus,
+**Darstellung:** Titel, Design (Automatisch / Hell / Dunkel), Sprache (Automatisch / Deutsch / Englisch), Original-Produktfotos an/aus,
 Ports, Firmware und Neustart-Button ein- oder ausblenden.
 
 **Geräte:** Geräte auswählen. Leer lassen zeigt alle UniFi-Geräte automatisch.
 
-**Reihenfolge:** Geräte mit den Pfeil-Knöpfen nach oben oder unten verschieben.
+**Reihenfolge:** Geräte am Griff (⠿) mit Maus oder Finger ziehen oder mit den Pfeil-Knöpfen verschieben.
 
 **Pro Gerät:** Anzeigename, Modell erzwingen (falls ein Gerät falsch erkannt wird), eigenes Bild.
 
@@ -80,6 +81,7 @@ Ports, Firmware und Neustart-Button ein- oder ausblenden.
 type: custom:unifi-network-card
 title: Netzwerk
 theme: dark                # auto (Standard) | light | dark
+language: de               # auto (Standard, wie Home Assistant) | de | en
 photos: false              # Standard: true
 devices:                   # weglassen = alle UniFi-Geräte automatisch
   - 1a2b3c4d5e...          # Geräte-IDs
@@ -109,8 +111,8 @@ nach `/config/www/unifi/` legen und beim Gerät als **Eigenes Bild** eintragen (
 
 ## Entwicklung
 
-- `demo.html`: Demo mit simulierten Geräten (`?set=home|gateways|aps|switches|all`, `&split`, `#dark`).
-- `test.html`, `test-de.html`, `editor-test.html`: Tests für Darstellung, deutsche Entitätsnamen und Editor.
+- `demo.html`: Demo mit simulierten Geräten (`?set=home|gateways|aps|switches|all`, `&lang=de|en`, `&split`, `#dark`).
+- `test.html`, `test-de.html`, `editor-test.html`: Tests für Darstellung, deutsche Entitätsnamen, Sprachen, Drag & Drop und Editor.
 - `tools/`: baut die Geräteliste aus Ubiquitis öffentlichen Daten neu
   (`static.ui.com/fingerprint/ui/public.json` und techspecs.ui.com), ermittelt Status-LED und
   Geräteumriss in jedem Foto (`analyze-leds.html`) und erstellt die README-Bilder (`snapshot.js`).

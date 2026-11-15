@@ -3,7 +3,88 @@
  * Realistische SVG-Darstellung (UDR7, U7 Lite, generische APs/Switches/Gateways),
  * automatische Entitätserkennung pro Gerät, Ports, Clients, Firmware, Neustart.
  */
-const UNC_VERSION = "1.4.0";
+const UNC_VERSION = "1.5.0";
+
+/* ---------- Sprache (Deutsch / Englisch) ---------- */
+const I18N = {
+  de: {
+    online: "Online", offline: "Offline", unknown: "Unbekannt",
+    st_pending: "Wartet auf Adoption", st_firmware_mismatch: "Firmware-Konflikt", st_upgrading: "Update läuft",
+    st_provisioning: "Wird provisioniert", st_heartbeat_missed: "Heartbeat verpasst", st_adopting: "Wird adoptiert",
+    st_deleting: "Wird entfernt", st_inform_error: "Inform-Fehler", st_adoption_failed: "Adoption fehlgeschlagen",
+    st_isolated: "Isoliert", st_unavailable: "Nicht verfügbar",
+    clients: "Clients", uptime: "Laufzeit", download: "Download", upload: "Upload", cpu: "CPU", ram: "RAM",
+    latency: "Latenz", temperature: "Temperatur", poe: "PoE", power: "Leistung",
+    disconnected: "getrennt", port_disabled: "deaktiviert", poe_on: "PoE an",
+    days: "T", hours: "Std", minutes: "Min",
+    update: "Update", restart: "Neustart", restart_confirm: "{name} wirklich neu starten?",
+    no_devices: "Keine UniFi-Geräte gefunden. Ist die Integration „UniFi Network“ eingerichtet?",
+    device_missing: "Gerät {id} nicht gefunden.",
+    no_sensors: "Keine Sensoren aktiviert – in der UniFi-Integration die Geräte-Sensoren einschalten.",
+    unreachable: "Gerät ist nicht erreichbar.",
+    invalid_config: "Ungültige Konfiguration",
+    // Editor
+    sec_appearance: "Darstellung", sec_devices: "Geräte",
+    title: "Titel (optional)", theme: "Design", language: "Sprache", photos: "Original-Produktfotos verwenden",
+    show_ports: "Ports anzeigen", show_firmware: "Firmware & Updates anzeigen", show_restart: "Neustart-Button anzeigen",
+    devices: "Geräte", name: "Anzeigename", model: "Modell / Darstellung", image: "Eigenes Bild (URL)",
+    h_devices: "Leer lassen, um alle UniFi-Geräte automatisch anzuzeigen.",
+    h_photos: "Aus: gezeichnete Grafiken statt Fotos von Ubiquiti.",
+    h_name: "Leer = Name aus Home Assistant", h_model: "Nur ändern, wenn das Gerät falsch erkannt wird.",
+    h_image: "z. B. /local/unifi/mein-ap.png – leer = Originalfoto bzw. Grafik",
+    theme_auto: "Automatisch (wie Home-Assistant-Theme)", theme_light: "Hell", theme_dark: "Dunkel",
+    lang_auto: "Automatisch (wie Home Assistant)",
+    model_auto: "Automatisch erkennen", graphic: "Grafik",
+    g_gateway: "Gateway", g_ap_round: "Access Point (rund)", g_ap_square: "Access Point (eckig)", g_switch: "Switch",
+    order: "Reihenfolge", order_hint: "Geräte am Griff ziehen oder mit den Pfeilen verschieben.",
+    move_up: "Nach oben", move_down: "Nach unten", drag: "Ziehen zum Verschieben",
+    card_desc: "UniFi-Geräte mit echten Produktfotos, Status-LED, Ports, Clients und Firmware.",
+  },
+  en: {
+    online: "Online", offline: "Offline", unknown: "Unknown",
+    st_pending: "Pending adoption", st_firmware_mismatch: "Firmware mismatch", st_upgrading: "Updating",
+    st_provisioning: "Provisioning", st_heartbeat_missed: "Heartbeat missed", st_adopting: "Adopting",
+    st_deleting: "Deleting", st_inform_error: "Inform error", st_adoption_failed: "Adoption failed",
+    st_isolated: "Isolated", st_unavailable: "Unavailable",
+    clients: "Clients", uptime: "Uptime", download: "Download", upload: "Upload", cpu: "CPU", ram: "RAM",
+    latency: "Latency", temperature: "Temperature", poe: "PoE", power: "Power",
+    disconnected: "no link", port_disabled: "disabled", poe_on: "PoE on",
+    days: "d", hours: "h", minutes: "min",
+    update: "Update", restart: "Restart", restart_confirm: "Really restart {name}?",
+    no_devices: "No UniFi devices found. Is the “UniFi Network” integration set up?",
+    device_missing: "Device {id} not found.",
+    no_sensors: "No sensors enabled – enable the device sensors in the UniFi integration.",
+    unreachable: "Device is unreachable.",
+    invalid_config: "Invalid configuration",
+    sec_appearance: "Appearance", sec_devices: "Devices",
+    title: "Title (optional)", theme: "Design", language: "Language", photos: "Use original product photos",
+    show_ports: "Show ports", show_firmware: "Show firmware & updates", show_restart: "Show restart button",
+    devices: "Devices", name: "Display name", model: "Model / appearance", image: "Custom image (URL)",
+    h_devices: "Leave empty to show all UniFi devices automatically.",
+    h_photos: "Off: drawn graphics instead of Ubiquiti photos.",
+    h_name: "Empty = name from Home Assistant", h_model: "Only change if the device is detected incorrectly.",
+    h_image: "e.g. /local/unifi/my-ap.png – empty = original photo or graphic",
+    theme_auto: "Automatic (follow Home Assistant theme)", theme_light: "Light", theme_dark: "Dark",
+    lang_auto: "Automatic (follow Home Assistant)",
+    model_auto: "Detect automatically", graphic: "Graphic",
+    g_gateway: "Gateway", g_ap_round: "Access point (round)", g_ap_square: "Access point (square)", g_switch: "Switch",
+    order: "Order", order_hint: "Drag devices by the handle or move them with the arrows.",
+    move_up: "Move up", move_down: "Move down", drag: "Drag to reorder",
+    card_desc: "UniFi devices with real product photos, status LED, ports, clients and firmware.",
+  },
+};
+// Aktuelle Sprache: per Karten-Option `language` oder aus Home Assistant (de* → Deutsch, sonst Englisch)
+let LANG = (navigator.language || "en").toLowerCase().startsWith("de") ? "de" : "en";
+function setLang(hass, forced) {
+  const l = forced && forced !== "auto" ? forced : (hass?.locale?.language || hass?.language || LANG);
+  LANG = String(l).toLowerCase().startsWith("de") ? "de" : "en";
+  return LANG;
+}
+const t = (key, vars) => {
+  let s = I18N[LANG][key] ?? I18N.en[key] ?? key;
+  if (vars) for (const [k, v] of Object.entries(vars)) s = s.replace(`{${k}}`, v);
+  return s;
+};
 
 /* ---------- Hilfsfunktionen ---------- */
 const esc = (s) =>
@@ -38,7 +119,7 @@ const fmtMbit = (m) => {
 const LINK_DOWN_MAX_MBIT = 10;
 const fmtSpeed = (m) => {
   if (m === null || m === undefined) return null;
-  if (m <= LINK_DOWN_MAX_MBIT) return "getrennt";
+  if (m <= LINK_DOWN_MAX_MBIT) return t("disconnected");
   if (m >= 1000) return `${+(m / 1000).toFixed(1)} Gbit/s`;
   return `${Math.round(m)} Mbit/s`;
 };
@@ -53,9 +134,9 @@ const fmtUptime = (hass, id) => {
     secs = (Date.now() - t) / 1000;
   }
   const d = Math.floor(secs / 86400), h = Math.floor((secs % 86400) / 3600), m = Math.floor((secs % 3600) / 60);
-  if (d > 0) return `${d} T ${h} Std`;
-  if (h > 0) return `${h} Std ${m} Min`;
-  return `${m} Min`;
+  if (d > 0) return `${d} ${t("days")} ${h} ${t("hours")}`;
+  if (h > 0) return `${h} ${t("hours")} ${m} ${t("minutes")}`;
+  return `${m} ${t("minutes")}`;
 };
 
 /* ---------- Gerätedatenbank (offizielle Ubiquiti-Daten, siehe tools/) ---------- */
@@ -402,26 +483,21 @@ function discover(hass, deviceId) {
 }
 
 /* ---------- Status ---------- */
-const STATE_TEXT = {
-  connected: "Online", disconnected: "Offline", pending: "Wartet auf Adoption", firmware_mismatch: "Firmware-Konflikt",
-  upgrading: "Update läuft", provisioning: "Wird provisioniert", heartbeat_missed: "Heartbeat verpasst",
-  adopting: "Wird adoptiert", deleting: "Wird entfernt", inform_error: "Inform-Fehler", adoption_failed: "Adoption fehlgeschlagen",
-  isolated: "Isoliert", unknown: "Unbekannt", unavailable: "Nicht verfügbar",
-};
+const stateText = (v) => (v === "connected" ? t("online") : v === "disconnected" ? t("offline") : I18N.en["st_" + v] ? t("st_" + v) : v);
 function deviceStatus(hass, d) {
   const st = d.state && hass.states[d.state];
   if (st && !["unknown", "unavailable"].includes(st.state)) {
     const v = st.state;
     const level = v === "connected" ? "ok" : ["upgrading", "provisioning", "adopting", "pending"].includes(v) ? "busy" : "bad";
-    return { level, text: STATE_TEXT[v] || v };
+    return { level, text: stateText(v) };
   }
   const tr = d.tracker && hass.states[d.tracker];
-  if (tr) return tr.state === "home" ? { level: "ok", text: "Online" } : { level: "bad", text: "Offline" };
+  if (tr) return tr.state === "home" ? { level: "ok", text: t("online") } : { level: "bad", text: t("offline") };
   const probe = d.uptime || d.clients || d.cpu;
   if (probe && hass.states[probe]) {
-    return hass.states[probe].state === "unavailable" ? { level: "bad", text: "Offline" } : { level: "ok", text: "Online" };
+    return hass.states[probe].state === "unavailable" ? { level: "bad", text: t("offline") } : { level: "ok", text: t("online") };
   }
-  return { level: "unknown", text: "Unbekannt" };
+  return { level: "unknown", text: t("unknown") };
 }
 const LED = { ok: "#2f8cff", busy: "#ffb020", bad: "#ff4d4f", unknown: "#9aa3ad" };
 
@@ -557,8 +633,8 @@ function renderPorts(hass, ports, deviceName) {
         fmtSpeed(i.speed),
         i.rx !== null ? `↓ ${fmtMbit(i.rx)}` : null,
         i.tx !== null ? `↑ ${fmtMbit(i.tx)}` : null,
-        i.poeOn ? `PoE ${i.poeW !== null ? i.poeW.toFixed(1) + " W" : "an"}` : null,
-        !i.enabled ? "deaktiviert" : null,
+        i.poeOn ? (i.poeW !== null ? `PoE ${i.poeW.toFixed(1)} W` : t("poe_on")) : null,
+        !i.enabled ? t("port_disabled") : null,
       ].filter(Boolean).join(" · ");
       const target = port.rx || port.speed || port.tx || port.poe || port.enable;
       return `
@@ -671,7 +747,7 @@ class UnifiNetworkCard extends HTMLElement {
   }
 
   setConfig(config) {
-    if (!config) throw new Error("Ungültige Konfiguration");
+    if (!config) throw new Error(t("invalid_config"));
     this._config = { theme: "auto", show_ports: true, show_firmware: true, show_restart: true, ...config };
     this._sig = null;
     if (this._hass) this._render();
@@ -679,7 +755,8 @@ class UnifiNetworkCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    const sig = this._signature();
+    setLang(hass, this._config?.language);
+    const sig = this._signature() + LANG;
     if (sig !== this._sig) { this._sig = sig; this._render(); }
   }
 
@@ -717,6 +794,7 @@ class UnifiNetworkCard extends HTMLElement {
 
   _render() {
     if (!this._hass || !this._config) return;
+    setLang(this._hass, this._config.language);
     if (!this.shadowRoot) {
       this.attachShadow({ mode: "open" });
       this.shadowRoot.addEventListener("click", (ev) => this._onClick(ev));
@@ -725,7 +803,7 @@ class UnifiNetworkCard extends HTMLElement {
     const title = this._config.title ? `<div class="title">${esc(this._config.title)}</div>` : "";
     const body = ids.length
       ? ids.map((id, i) => this._renderDevice(id, i)).join("")
-      : `<div class="empty">Keine UniFi-Geräte gefunden. Ist die Integration „UniFi Network“ eingerichtet?</div>`;
+      : `<div class="empty">${esc(t("no_devices"))}</div>`;
     this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card class="${["light", "dark"].includes(this._config.theme) ? this._config.theme : ""}">${title}${body}</ha-card>`;
     this._placeArts();
   }
@@ -757,7 +835,7 @@ class UnifiNetworkCard extends HTMLElement {
   _renderDevice(id, idx) {
     const h = this._hass;
     const dev = h.devices?.[id];
-    if (!dev) return `<div class="dev empty">Gerät ${esc(id)} nicht gefunden.</div>`;
+    if (!dev) return `<div class="dev empty">${esc(t("device_missing", { id }))}</div>`;
     const ov = this._override(id);
     const d = discover(h, id);
     const prof = detectProfile(dev, d, ov.model);
@@ -820,16 +898,16 @@ class UnifiNetworkCard extends HTMLElement {
       return `<div class="stat" data-entity="${esc(entity)}"><div class="slabel"><ha-icon icon="${icon}"></ha-icon>${label}</div><div class="sval">${esc(val)}</div>${bar}</div>`;
     };
     const stats = [
-      stat("mdi:devices", "Clients", clients !== null ? String(clients) : null, d.clients),
-      stat("mdi:timer-outline", "Laufzeit", uptime, d.uptime),
-      stat("mdi:download", "Download", rx !== null ? fmtMbit(rx) : null, d.wanRx || d.ports[0]?.rx),
-      stat("mdi:upload", "Upload", tx !== null ? fmtMbit(tx) : null, d.wanTx || d.ports[0]?.tx),
-      stat("mdi:cpu-64-bit", "CPU", cpu !== null ? `${cpu.toFixed(0)} %` : null, d.cpu, cpu),
-      stat("mdi:memory", "RAM", mem !== null ? `${mem.toFixed(0)} %` : null, d.mem, mem),
-      stat("mdi:speedometer", "Latenz", num(h, d.latency) !== null ? `${num(h, d.latency).toFixed(0)} ms` : null, d.latency),
-      stat("mdi:thermometer", "Temperatur", temp !== null ? `${temp.toFixed(0)} °C` : null, d.temp),
-      stat("mdi:flash", "PoE", poeTotal > 0 ? `${poeTotal.toFixed(1)} W` : null, d.ports.find((p) => p.poe_power)?.poe_power),
-      stat("mdi:lightning-bolt", "Leistung", power !== null ? `${power.toFixed(1)} W` : null, d.power),
+      stat("mdi:devices", t("clients"), clients !== null ? String(clients) : null, d.clients),
+      stat("mdi:timer-outline", t("uptime"), uptime, d.uptime),
+      stat("mdi:download", t("download"), rx !== null ? fmtMbit(rx) : null, d.wanRx || d.ports[0]?.rx),
+      stat("mdi:upload", t("upload"), tx !== null ? fmtMbit(tx) : null, d.wanTx || d.ports[0]?.tx),
+      stat("mdi:cpu-64-bit", t("cpu"), cpu !== null ? `${cpu.toFixed(0)} %` : null, d.cpu, cpu),
+      stat("mdi:memory", t("ram"), mem !== null ? `${mem.toFixed(0)} %` : null, d.mem, mem),
+      stat("mdi:speedometer", t("latency"), num(h, d.latency) !== null ? `${num(h, d.latency).toFixed(0)} ms` : null, d.latency),
+      stat("mdi:thermometer", t("temperature"), temp !== null ? `${temp.toFixed(0)} °C` : null, d.temp),
+      stat("mdi:flash", t("poe"), poeTotal > 0 ? `${poeTotal.toFixed(1)} W` : null, d.ports.find((p) => p.poe_power)?.poe_power),
+      stat("mdi:lightning-bolt", t("power"), power !== null ? `${power.toFixed(1)} W` : null, d.power),
     ].join("");
 
     const upd = d.update && h.states[d.update];
@@ -837,11 +915,11 @@ class UnifiNetworkCard extends HTMLElement {
     if (this._config.show_firmware && upd) {
       const a = upd.attributes;
       fw = upd.state === "on"
-        ? `<button class="chip upd" data-entity="${esc(d.update)}"><ha-icon icon="mdi:package-up"></ha-icon>Update ${esc(a.latest_version || "")}</button>`
+        ? `<button class="chip upd" data-entity="${esc(d.update)}"><ha-icon icon="mdi:package-up"></ha-icon>${t("update")} ${esc(a.latest_version || "")}</button>`
         : `<button class="chip" data-entity="${esc(d.update)}"><ha-icon icon="mdi:chip"></ha-icon>FW ${esc(a.installed_version || dev.sw_version || "–")}</button>`;
     } else if (dev.sw_version) fw = `<span class="chip"><ha-icon icon="mdi:chip"></ha-icon>FW ${esc(dev.sw_version)}</span>`;
     const restart = this._config.show_restart && d.restart
-      ? `<button class="chip warn" data-restart="${esc(d.restart)}" data-name="${esc(name)}"><ha-icon icon="mdi:restart"></ha-icon>Neustart</button>` : "";
+      ? `<button class="chip warn" data-restart="${esc(d.restart)}" data-name="${esc(name)}"><ha-icon icon="mdi:restart"></ha-icon>${t("restart")}</button>` : "";
 
     (this._pendingArts = this._pendingArts || new Map()).set(id, art);
     return `
@@ -852,7 +930,7 @@ class UnifiNetworkCard extends HTMLElement {
       </div>
       <div class="body" style="${wide ? "grid-template-columns:1fr" : ""}">
         <div class="stage ${wide ? "wide" : ""}" data-art-id="${esc(id)}" data-entity="${esc(d.state || d.tracker || d.uptime || "")}"></div>
-        <div class="stats">${stats || `<div class="empty">${online ? "Keine Sensoren aktiviert – in der UniFi-Integration die Geräte-Sensoren einschalten." : "Gerät ist nicht erreichbar."}</div>`}</div>
+        <div class="stats">${stats || `<div class="empty">${esc(online ? t("no_sensors") : t("unreachable"))}</div>`}</div>
       </div>
       ${this._config.show_ports ? renderPorts(h, d.ports, dev.name_by_user || dev.name) : ""}
       ${fw || restart ? `<div class="foot">${fw}<span class="spacer"></span>${restart}</div>` : ""}
@@ -864,7 +942,7 @@ class UnifiNetworkCard extends HTMLElement {
     const el = path.find((n) => n.dataset && (n.dataset.entity || n.dataset.restart || n.dataset.device));
     if (!el) return;
     if (el.dataset.restart) {
-      if (confirm(`${el.dataset.name} wirklich neu starten?`)) {
+      if (confirm(t("restart_confirm", { name: el.dataset.name }))) {
         this._hass.callService("button", "press", { entity_id: el.dataset.restart });
       }
       return;
@@ -904,33 +982,16 @@ function findUnifiDevices(hass) {
 }
 
 /* ---------- Visueller Editor ---------- */
-const MODEL_OPTIONS = [
-  { value: "", label: "Automatisch erkennen" },
+const modelOptions = () => [
+  { value: "", label: t("model_auto") },
   ...DEVICE_DB.map((e) => ({ value: e.sku, label: `${e.name} (${e.sku})` })),
-  { value: "gateway", label: "Grafik: Gateway" },
-  { value: "ap-round", label: "Grafik: Access Point (rund)" },
-  { value: "ap-square", label: "Grafik: Access Point (eckig)" },
-  { value: "switch", label: "Grafik: Switch" },
+  { value: "gateway", label: `${t("graphic")}: ${t("g_gateway")}` },
+  { value: "ap-round", label: `${t("graphic")}: ${t("g_ap_round")}` },
+  { value: "ap-square", label: `${t("graphic")}: ${t("g_ap_square")}` },
+  { value: "switch", label: `${t("graphic")}: ${t("g_switch")}` },
 ];
-const EDITOR_LABELS = {
-  title: "Titel (optional)",
-  theme: "Design",
-  devices: "Geräte",
-  show_ports: "Ports anzeigen",
-  show_firmware: "Firmware & Updates anzeigen",
-  show_restart: "Neustart-Button anzeigen",
-  photos: "Original-Produktfotos verwenden",
-  name: "Anzeigename",
-  model: "Darstellung",
-  image: "Eigenes Bild (URL)",
-};
-const EDITOR_HELPERS = {
-  devices: "Leer lassen, um alle UniFi-Geräte automatisch anzuzeigen.",
-  photos: "Aus: gezeichnete Grafiken statt Fotos von Ubiquiti.",
-  name: "Leer = Name aus Home Assistant",
-  model: "Nur ändern, wenn das Gerät falsch erkannt wird.",
-  image: "z. B. /local/unifi/mein-ap.png – leer = Originalfoto bzw. Grafik",
-};
+const EDITOR_FIELDS = ["title", "theme", "language", "devices", "show_ports", "show_firmware", "show_restart", "photos", "name", "model", "image"];
+const EDITOR_HELP = { devices: "h_devices", photos: "h_photos", name: "h_name", model: "h_model", image: "h_image" };
 const OV_PREFIX = "geraet_";
 
 class UnifiNetworkCardEditor extends HTMLElement {
@@ -955,7 +1016,15 @@ class UnifiNetworkCardEditor extends HTMLElement {
     return `${d.name_by_user || d.name || id}${model ? ` · ${model}` : ""}`;
   }
 
-  // Liste mit Pfeil-Knöpfen zum Umsortieren (ha-form hat dafür kein Feld)
+  _moveDevice(from, to) {
+    const cur = this._shownDevices();
+    if (to < 0 || to >= cur.length || from === to) return;
+    const [id] = cur.splice(from, 1);
+    cur.splice(to, 0, id);
+    this._changed({ ...this._form.data, order: cur });
+  }
+
+  // Reihenfolge: Zeilen am Griff ziehen (Maus und Touch über Pointer-Events) oder per Pfeil verschieben
   _renderOrder(ids) {
     if (!this._orderEl) {
       this._orderEl = document.createElement("div");
@@ -963,24 +1032,32 @@ class UnifiNetworkCardEditor extends HTMLElement {
       this._orderEl.addEventListener("click", (ev) => {
         const btn = ev.target.closest("button[data-move]");
         if (!btn) return;
-        const cur = this._shownDevices();
-        const i = +btn.dataset.idx, j = i + (btn.dataset.move === "up" ? -1 : 1);
-        if (j < 0 || j >= cur.length) return;
-        [cur[i], cur[j]] = [cur[j], cur[i]];
-        this._changed({ ...this._form.data, order: cur });
+        const i = +btn.dataset.idx;
+        this._moveDevice(i, i + (btn.dataset.move === "up" ? -1 : 1));
       });
+      this._orderEl.addEventListener("pointerdown", (ev) => this._dragStart(ev));
       this.appendChild(this._orderEl);
     }
-    const btn = (dir, i, disabled) =>
-      `<button data-move="${dir}" data-idx="${i}" ${disabled ? "disabled" : ""} title="${dir === "up" ? "Nach oben" : "Nach unten"}" aria-label="${dir === "up" ? "Nach oben" : "Nach unten"}">${dir === "up" ? "▲" : "▼"}</button>`;
+    const btn = (dir, i, disabled) => {
+      const label = t(dir === "up" ? "move_up" : "move_down");
+      return `<button data-move="${dir}" data-idx="${i}" ${disabled ? "disabled" : ""} title="${label}" aria-label="${label}">${dir === "up" ? "▲" : "▼"}</button>`;
+    };
     this._orderEl.innerHTML = `
       <style>
         .unc-order { margin-top:16px; }
         .unc-order h3 { font-size:1rem; font-weight:500; margin:0 0 4px; color:var(--primary-text-color); }
         .unc-order p { margin:0 0 8px; font-size:.85rem; color:var(--secondary-text-color); }
-        .unc-order ol { list-style:none; margin:0; padding:0; border:1px solid var(--divider-color); border-radius:12px; overflow:hidden; }
-        .unc-order li { display:flex; align-items:center; gap:8px; padding:6px 8px 6px 12px; color:var(--primary-text-color); }
+        .unc-order ol { list-style:none; margin:0; padding:0; border:1px solid var(--divider-color); border-radius:12px; position:relative; }
+        .unc-order li { display:flex; align-items:center; gap:6px; padding:6px 8px 6px 4px; color:var(--primary-text-color);
+          background:var(--card-background-color, var(--ha-card-background, #fff)); position:relative; transition:transform .15s ease; }
+        .unc-order li:first-child { border-radius:12px 12px 0 0; } .unc-order li:last-child { border-radius:0 0 12px 12px; }
+        .unc-order li:only-child { border-radius:12px; }
         .unc-order li + li { border-top:1px solid var(--divider-color); }
+        .unc-order li.dragging { transition:none; z-index:2; box-shadow:0 6px 18px rgba(0,0,0,.22); border-radius:10px; }
+        .unc-order .handle { cursor:grab; touch-action:none; user-select:none; width:28px; height:32px; display:inline-flex; align-items:center;
+          justify-content:center; color:var(--secondary-text-color); font-size:1.1rem; border-radius:8px; }
+        .unc-order .handle:hover { background:var(--secondary-background-color, rgba(127,127,127,.15)); }
+        .unc-order li.dragging .handle { cursor:grabbing; }
         .unc-order .nr { width:1.4em; color:var(--secondary-text-color); font-variant-numeric:tabular-nums; }
         .unc-order .nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .unc-order button { all:unset; cursor:pointer; width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center;
@@ -988,11 +1065,52 @@ class UnifiNetworkCardEditor extends HTMLElement {
         .unc-order button:hover:not([disabled]) { background:var(--secondary-background-color, rgba(127,127,127,.15)); }
         .unc-order button:focus-visible { outline:2px solid var(--primary-color); }
         .unc-order button[disabled] { opacity:.3; cursor:default; }
+        @media (prefers-reduced-motion: reduce) { .unc-order li { transition:none; } }
       </style>
-      <h3>Reihenfolge</h3>
-      <p>Mit den Pfeilen festlegen, in welcher Reihenfolge die Geräte in der Karte erscheinen.</p>
-      <ol>${ids.map((id, i) => `<li><span class="nr">${i + 1}.</span><span class="nm">${esc(this._devLabel(id))}</span>${btn("up", i, i === 0)}${btn("down", i, i === ids.length - 1)}</li>`).join("")}</ol>`;
+      <h3>${esc(t("order"))}</h3>
+      <p>${esc(t("order_hint"))}</p>
+      <ol>${ids.map((id, i) => `<li data-idx="${i}"><span class="handle" title="${esc(t("drag"))}" aria-hidden="true">⠿</span><span class="nr">${i + 1}.</span><span class="nm">${esc(this._devLabel(id))}</span>${btn("up", i, i === 0)}${btn("down", i, i === ids.length - 1)}</li>`).join("")}</ol>`;
     this._orderEl.style.display = ids.length > 1 ? "" : "none";
+  }
+
+  _dragStart(ev) {
+    const handle = ev.target.closest(".handle");
+    if (!handle || (ev.pointerType === "mouse" && ev.button !== 0)) return;
+    ev.preventDefault();
+    const li = handle.closest("li");
+    const rows = [...li.parentElement.children];
+    const from = rows.indexOf(li);
+    const rects = rows.map((r) => r.getBoundingClientRect());
+    const h = rects[from].height;
+    const startY = ev.clientY;
+    let to = from;
+    li.classList.add("dragging");
+    try { handle.setPointerCapture(ev.pointerId); } catch { /* z. B. synthetische Ereignisse */ }
+    const move = (e) => {
+      const minDy = rects[0].top - rects[from].top, maxDy = rects[rects.length - 1].bottom - rects[from].bottom;
+      const dy = Math.max(minDy, Math.min(maxDy, e.clientY - startY));
+      li.style.transform = `translateY(${dy}px)`;
+      // Ziel = Zeile, in der die Mitte der gezogenen Zeile gerade liegt
+      const mid = rects[from].top + h / 2 + dy;
+      to = rects.findIndex((r) => mid >= r.top && mid < r.bottom);
+      if (to === -1) to = mid < rects[0].top ? 0 : rects.length - 1;
+      rows.forEach((r, i) => {
+        if (i === from) return;
+        const shift = from < to && i > from && i <= to ? -h : from > to && i >= to && i < from ? h : 0;
+        r.style.transform = shift ? `translateY(${shift}px)` : "";
+      });
+    };
+    const end = () => {
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", end);
+      handle.removeEventListener("pointercancel", end);
+      rows.forEach((r) => { r.style.transform = ""; });
+      li.classList.remove("dragging");
+      this._moveDevice(from, to);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", end);
+    handle.addEventListener("pointercancel", end);
   }
 
   // Alte YAML-Form (Objekte in devices) in overrides übernehmen
@@ -1010,13 +1128,20 @@ class UnifiNetworkCardEditor extends HTMLElement {
   _schema(ids) {
     const devName = (id) => this._devLabel(id);
     return [
-      { type: "expandable", name: "", flatten: true, title: "Darstellung", icon: "mdi:palette-outline", expanded: true, schema: [
+      { type: "expandable", name: "", flatten: true, title: t("sec_appearance"), icon: "mdi:palette-outline", expanded: true, schema: [
         { name: "title", selector: { text: {} } },
-        { name: "theme", selector: { select: { mode: "dropdown", options: [
-          { value: "auto", label: "Automatisch (wie Home-Assistant-Theme)" },
-          { value: "light", label: "Hell" },
-          { value: "dark", label: "Dunkel" },
-        ] } } },
+        { type: "grid", name: "", schema: [
+          { name: "theme", selector: { select: { mode: "dropdown", options: [
+            { value: "auto", label: t("theme_auto") },
+            { value: "light", label: t("theme_light") },
+            { value: "dark", label: t("theme_dark") },
+          ] } } },
+          { name: "language", selector: { select: { mode: "dropdown", options: [
+            { value: "auto", label: t("lang_auto") },
+            { value: "de", label: "Deutsch" },
+            { value: "en", label: "English" },
+          ] } } },
+        ] },
         { name: "photos", selector: { boolean: {} } },
         { type: "grid", name: "", schema: [
           { name: "show_ports", selector: { boolean: {} } },
@@ -1024,13 +1149,13 @@ class UnifiNetworkCardEditor extends HTMLElement {
           { name: "show_restart", selector: { boolean: {} } },
         ] },
       ] },
-      { type: "expandable", name: "", flatten: true, title: "Geräte", icon: "mdi:router-wireless", expanded: true, schema: [
+      { type: "expandable", name: "", flatten: true, title: t("sec_devices"), icon: "mdi:router-wireless", expanded: true, schema: [
         { name: "devices", selector: { device: { multiple: true, filter: { integration: "unifi" } } } },
       ] },
       ...ids.map((id) => ({
         type: "expandable", name: OV_PREFIX + id, title: devName(id), icon: "mdi:tune-variant", schema: [
           { name: "name", selector: { text: {} } },
-          { name: "model", selector: { select: { mode: "dropdown", options: MODEL_OPTIONS } } },
+          { name: "model", selector: { select: { mode: "dropdown", options: modelOptions() } } },
           { name: "image", selector: { text: {} } },
         ],
       })),
@@ -1039,19 +1164,20 @@ class UnifiNetworkCardEditor extends HTMLElement {
 
   _render() {
     if (!this._hass || !this._config) return;
+    setLang(this._hass, this._config.language);
     if (!this._form) {
       this._form = document.createElement("ha-form");
-      this._form.computeLabel = (s) => EDITOR_LABELS[s.name] || s.title || s.name;
-      this._form.computeHelper = (s) => EDITOR_HELPERS[s.name];
+      this._form.computeLabel = (s) => (EDITOR_FIELDS.includes(s.name) ? t(s.name) : s.title || s.name);
+      this._form.computeHelper = (s) => (EDITOR_HELP[s.name] ? t(EDITOR_HELP[s.name]) : undefined);
       this._form.addEventListener("value-changed", (ev) => this._changed(ev.detail.value));
       this.appendChild(this._form);
     }
     const ids = this._shownDevices();
-    const key = ids.join(",");
+    const key = ids.join(",") + "|" + LANG;
     if (key !== this._schemaKey) { this._schemaKey = key; this._form.schema = this._schema(ids); }
     const ov = this._overrides();
     const data = {
-      theme: "auto", photos: true, show_ports: true, show_firmware: true, show_restart: true,
+      theme: "auto", language: "auto", photos: true, show_ports: true, show_firmware: true, show_restart: true,
       ...this._config,
       devices: (this._config.devices || []).map((d) => (typeof d === "string" ? d : d.device)).filter(Boolean),
     };
@@ -1088,6 +1214,7 @@ class UnifiNetworkCardEditor extends HTMLElement {
     if (!v.order?.length) delete v.order;
     if (!v.title) delete v.title;
     if (v.theme === "auto") delete v.theme;
+    if (v.language === "auto") delete v.language;
     for (const k of ["photos", "show_ports", "show_firmware", "show_restart"]) if (v[k] === true) delete v[k];
     this._config = v;
     this._render();
@@ -1102,7 +1229,7 @@ if (!window.customCards.some((c) => c.type === "unifi-network-card")) {
   window.customCards.push({
     type: "unifi-network-card",
     name: "UniFi Network Card",
-    description: "UniFi-Geräte (UDR7, U7 Lite, …) mit realistischer Darstellung, Ports, Clients und Firmware.",
+    description: t("card_desc"),
     preview: true,
   });
 }

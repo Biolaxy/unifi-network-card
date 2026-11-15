@@ -24,12 +24,13 @@ a restart button. Everything can be configured in the visual editor, so no YAML 
   switches are shown in landscape.
 - **Status on the real LED**: the original blue light while online; when the device is updating or
   provisioning, its LED ring or bar lights up orange and pulses. Offline devices are greyed out.
-- **Ports** with link speed (`1 Gbit/s`, `2.5 Gbit/s`, `getrennt` = disconnected), link LED, PoE
+- **Ports** with link speed (`1 Gbit/s`, `2.5 Gbit/s`, `no link`), link LED, PoE
   indicator and power. SFP+ ports are included.
 - Clients, uptime, CPU, RAM, temperature, WAN latency, PoE budget, firmware version and update badge,
   restart button (with confirmation).
 - **Light, dark or automatic** design (follows your Home Assistant theme).
-- **Language independent**: sensors are detected by type and by English or German names.
+- **English and German** interface, chosen automatically from your Home Assistant language (or set it manually).
+- Works with any Home Assistant language: sensors are detected by type and by English or German entity names.
 - Click any value, port or the photo to open its details; click the device name to open the device page.
 
 <img src="docs/gallery.png" alt="Gallery of supported devices" width="780">
@@ -47,7 +48,7 @@ a restart button. Everything can be configured in the visual editor, so no YAML 
 
 1. Copy `unifi-network-card.js` to `/config/www/`.
 2. **Settings → Dashboards → ⋮ → Resources → Add resource**
-   - URL: `/local/unifi-network-card.js?v=1.4.0`
+   - URL: `/local/unifi-network-card.js?v=1.5.0`
    - Type: **JavaScript module**
 3. Reload the page (Ctrl/Cmd + Shift + R) and add the card.
 
@@ -63,12 +64,12 @@ The UniFi Network integration **disables many sensors by default**. Enable the o
 
 ## Configuration (visual editor)
 
-**Appearance:** title, design (automatic / light / dark), original product photos on/off,
+**Appearance:** title, design (automatic / light / dark), language (automatic / English / German), original product photos on/off,
 show or hide ports, firmware and restart button.
 
 **Devices:** pick devices, or leave empty to show all UniFi devices automatically.
 
-**Order:** move devices up and down with the arrow buttons.
+**Order:** drag devices by the handle (⠿) with mouse or finger, or use the arrow buttons.
 
 **Per device:** display name, force a model if a device is detected incorrectly, custom image.
 
@@ -79,6 +80,7 @@ show or hide ports, firmware and restart button.
 type: custom:unifi-network-card
 title: Network
 theme: dark                # auto (default) | light | dark
+language: en               # auto (default, follows Home Assistant) | en | de
 photos: false              # default: true
 devices:                   # omit = all UniFi devices automatically
   - 1a2b3c4d5e...          # device IDs
@@ -105,8 +107,8 @@ transparent PNG in `/config/www/unifi/` and set it as **Custom image** for the d
 
 ## Development
 
-- `demo.html`: demo with simulated devices (`?set=home|gateways|aps|switches|all`, `&split`, `#dark`).
-- `test.html`, `test-de.html`, `editor-test.html`: tests for rendering, German entity names and the editor.
+- `demo.html`: demo with simulated devices (`?set=home|gateways|aps|switches|all`, `&lang=en|de`, `&split`, `#dark`).
+- `test.html`, `test-de.html`, `editor-test.html`: tests for rendering, German entity names, languages, drag & drop and the editor.
 - `tools/`: rebuilds the device list from Ubiquiti's public data
   (`static.ui.com/fingerprint/ui/public.json` and techspecs.ui.com), detects the status LED and the
   device outline in each photo (`analyze-leds.html`) and creates the README images (`snapshot.js`).

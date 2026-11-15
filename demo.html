@@ -14,7 +14,7 @@
 </head>
 <body>
 <script>
-// Demo mit simulierten Daten. Parameter: ?set=home|gateways|aps|switches|all  #dark für Dunkelmodus
+// Demo mit simulierten Daten. Parameter: ?set=home|gateways|aps|switches|all &lang=de|en &split &busy=<Index>  #dark für Dunkelmodus
 if (location.hash === "#dark") document.body.classList.add("dark");
 document.write('<script src="unifi-network-card.js?t=' + Date.now() + '"><\/script>');
 </script>
@@ -23,7 +23,9 @@ document.write('<script src="unifi-network-card.js?t=' + Date.now() + '"><\/scri
 const PORTS = (() => { try { const x = new XMLHttpRequest(); x.open("GET", "tools/device-db.base.json", false); x.send();
   return Object.fromEntries(JSON.parse(x.responseText).map((e) => [e.sku.toLowerCase(), e.ports])); } catch { return {}; } })();
 const SETS = {
-  home: [["UDR7", "Dream Router 7"], ["U7-Lite", "AP Flur"], ["U7-Pro", "AP Wohnzimmer"], ["USW-Lite-8-PoE", "Switch Büro"]],
+  home: /^de/.test(new URLSearchParams(location.search).get("lang") || navigator.language)
+    ? [["UDR7", "Dream Router 7"], ["U7-Lite", "AP Flur"], ["U7-Pro", "AP Wohnzimmer"], ["USW-Lite-8-PoE", "Switch Büro"]]
+    : [["UDR7", "Dream Router 7"], ["U7-Lite", "AP Hallway"], ["U7-Pro", "AP Living Room"], ["USW-Lite-8-PoE", "Office Switch"]],
   gateways: [["UDM-Pro", "Dream Machine Pro"], ["UCG-Ultra", "Cloud Gateway Ultra"], ["UX7", "UniFi Express 7"], ["UDR", "Dream Router"]],
   aps: [["U7-Pro-Max", "U7 Pro Max"], ["U6-Lite", "U6 Lite"], ["U6-LR", "U6 Long-Range"], ["UAP-AC-LITE", "AC Lite"], ["U7-Outdoor", "U7 Outdoor"], ["U6-Mesh", "U6 Mesh"]],
   switches: [["USW-Pro-24-POE", "Pro 24 PoE"], ["USW-Flex-Mini", "Flex Mini"], ["USW-Ultra", "Ultra"]],
@@ -58,7 +60,7 @@ set.forEach(([sku, name], i) => {
     }
   }
 });
-const hass = { states, entities, devices, callService: () => {} };
+const hass = { states, entities, devices, callService: () => {}, locale: { language: params.get("lang") || navigator.language || "en" } };
 const card = document.createElement("unifi-network-card");
 card.setConfig({ title: params.get("title") || "Netzwerk", theme: params.get("theme") || "auto" });
 card.hass = hass;

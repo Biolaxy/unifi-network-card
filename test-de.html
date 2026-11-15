@@ -57,6 +57,7 @@ function build(allEnabled) {
       ap: { id: "ap", name: "U7 Lite", model: "UAPA693", manufacturer: "Ubiquiti Networks", sw_version: "8.8.14.20179" },
     },
     callService: () => {},
+    locale: { language: "de" },
   };
 }
 const mk = (title, hass) => { const c = document.createElement("unifi-network-card"); c.setConfig({ title }); c.hass = hass; document.body.appendChild(c); return c; };
@@ -85,6 +86,17 @@ const portTxt = [...b.shadowRoot.querySelectorAll(".port")].map((p) => p.querySe
 ok("Leere Ports (10 Mbit/s) = getrennt", portTxt.join(",") === "P1:100 Mbit/s,P2:1 Gbit/s,P3:getrennt,P4:getrennt,SFP+:10 Gbit/s", portTxt);
 ok("Leere Ports ohne Link-Lampe", [...b.shadowRoot.querySelectorAll(".port")].filter((p) => p.classList.contains("down")).length === 2, "");
 ok("Status Online (Zustand)", a.shadowRoot.querySelector(".pill").textContent === "Online");
+// Englisches Home Assistant → englische Oberfläche
+const hEn = { ...build(true), locale: { language: "en" } };
+const cEn = document.createElement("unifi-network-card"); cEn.setConfig({ devices: ["udr"] }); cEn.hass = hEn; document.body.appendChild(cEn);
+const txtEn = cEn.shadowRoot.textContent;
+ok("Englisch: Uptime/Temperature/Restart", /Uptime/.test(txtEn) && /Temperature/.test(txtEn) && /Restart/.test(txtEn) && !/Laufzeit|Neustart/.test(txtEn), txtEn.slice(0, 300));
+ok("Englisch: leere Ports = no link", /no link/.test(txtEn) && !/getrennt/.test(txtEn));
+ok("Englisch: Laufzeit-Format 1 d 13 h", /1 d 13 h/.test(txtEn), txtEn.match(/\d+ \S+ \d+ \S+/)?.[0]);
+// Sprache per Option erzwingen
+const cForce = document.createElement("unifi-network-card"); cForce.setConfig({ devices: ["udr"], language: "de" }); cForce.hass = hEn;
+ok("Option language: de erzwingt Deutsch", /Laufzeit/.test(cForce.shadowRoot.textContent));
+cEn.hass = build(true); // zurück auf Deutsch, damit die Karten oben deutsch bleiben
 const pre = document.createElement("pre"); pre.textContent = res.join("\n") + `\n${res.filter((x) => x.startsWith("❌")).length} Fehler`; document.body.appendChild(pre);
 </script>
 </body>

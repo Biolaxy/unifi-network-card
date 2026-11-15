@@ -87,8 +87,34 @@ check("UAPA693 → U7 Lite (umbenannt)", det("UAPA693", "AP Flur").label === "U7
 check("U7LT → AC Lite (nicht U7 Lite)", det("U7LT", "x").label === "AC Lite", det("U7LT", "x"));
 check("Name ohne Code: 'UDM Pro'", det("", "UDM Pro").db?.sku === "UDM-Pro", det("", "UDM Pro"));
 check("Alter Schlüssel model: u7lite", detectProfile({}, { ports: [] }, "u7lite").label === "U7 Lite");
-check("Modell-Auswahl enthält Datenbank", MODEL_OPTIONS.length > 150, MODEL_OPTIONS.length);
+check("Modell-Auswahl enthält Datenbank", modelOptions().length > 150, modelOptions().length);
 check("Alter Schlüssel im Formular übersetzt", (() => { ed.setConfig({ type: "x", overrides: { ap1: { model: "u7lite" } } }); return form.data.geraet_ap1.model === "U7-Lite"; })(), form.data.geraet_ap1);
+
+// 9) Drag & Drop mit Pointer-Events (Maus oder Finger)
+const hass3 = { ...hass, devices: { ...hass.devices, sw: { id: "sw", name: "Switch", model: "USL8LP", manufacturer: "Ubiquiti Networks" } },
+  entities: { ...hass.entities, "update.sw": { entity_id: "update.sw", device_id: "sw", platform: "unifi" } } };
+ed.hass = hass3;
+ed.setConfig({ type: "custom:unifi-network-card", devices: ["udr", "ap1", "sw"] });
+const rowsBefore = ed._shownDevices().join(",");
+const handle = ed.querySelectorAll(".unc-order .handle")[0];
+const lis = [...ed.querySelectorAll(".unc-order li")];
+// Zeilenhöhen für den Test fest vorgeben (die Attrappe hat kein echtes Layout)
+lis.forEach((li, i) => { li.getBoundingClientRect = () => ({ top: i * 40, bottom: i * 40 + 40, height: 40 }); });
+const pe = (type, y) => new PointerEvent(type, { bubbles: true, clientY: y, pointerId: 1, pointerType: "touch", button: 0 });
+handle.dispatchEvent(pe("pointerdown", 20));
+handle.dispatchEvent(pe("pointermove", 60));
+handle.dispatchEvent(pe("pointermove", 105));
+handle.dispatchEvent(pe("pointerup", 105));
+check("Ziehen: 1. Gerät ans Ende", JSON.stringify(last.order) === JSON.stringify(["ap1", "sw", "udr"]), { rowsBefore, order: last.order });
+check("Ziehen: Geräteauswahl unverändert", JSON.stringify(last.devices) === JSON.stringify(["udr", "ap1", "sw"]), last.devices);
+
+// 10) Sprache
+ed.hass = { ...hass3, locale: { language: "en" } }; ed.setConfig({ type: "x" });
+check("Editor englisch", ed.querySelector(".unc-order h3").textContent === "Order" && form.schema[0].title === "Appearance", ed.querySelector(".unc-order h3").textContent);
+ed.setConfig({ type: "x", language: "de" });
+check("Editor-Option Deutsch", ed.querySelector(".unc-order h3").textContent === "Reihenfolge", ed.querySelector(".unc-order h3").textContent);
+form.emit({ ...form.data, language: "auto" });
+check("language: auto wird nicht gespeichert", !("language" in last), last);
 
 document.getElementById("out").textContent = results.join("\n") + `\n\n${results.filter((r) => r.startsWith("❌")).length} Fehler`;
 </script>
