@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><title>Editor Test</title></head>
+<body>
+<pre id="out">läuft…</pre>
+<script>
+// Attrappe für ha-form: merkt sich schema/data und kann Änderungen auslösen
+customElements.define("ha-form", class extends HTMLElement {
+  emit(data) { this.dispatchEvent(new CustomEvent("value-changed", { detail: { value: data } })); }
+});
+</script>
+<script src="unifi-network-card.js"></script>
+<script>
+const hass = {
+  states: {},
+  entities: {
+    "sensor.udr7_state": { entity_id: "sensor.udr7_state", device_id: "udr", platform: "unifi" },
+    "sensor.ap_state": { entity_id: "sensor.ap_state", device_id: "ap1", platform: "unifi" },
+  },
+  devices: {
+    udr: { id: "udr", name: "UDR7", model: "UniFi Dream Router 7", manufacturer: "Ubiquiti Networks" },
+    ap1: { id: "ap1", name: "AP Flur", model: "U7 Lite", manufacturer: "Ubiquiti Networks" },
+  },
+};
+const results = [];
+const check = (name, cond, info) => results.push(`${cond ? "✅" : "❌"} ${name}${cond ? "" : "  → " + JSON.stringify(info)}`);
+let last = null;
+const ed = document.createElement("unifi-network-card-editor");
+ed.addEventListener("config-changed", (e) => (last = e.detail.config));
+document.body.appendChild(ed);
+ed.hass = hass;
+ed.setConfig({ type: "custom:unifi-network-card" });
+const form = ed.querySelector("ha-form");
+
+// 1) Ohne Geräteauswahl: automatisch gefundene Geräte bekommen eigene Bereiche
+const titles = form.schema.map((s) => s.title);
+check("Bereiche Darstellung/Geräte vorhanden", titles.includes("Darstellung") && titles.includes("Geräte"), titles);
+check("Automatisch gefundene Geräte haben Einstellungen", titles.some((t) => t?.startsWith("UDR7")) && titles.some((t) => t?.startsWith("AP Flur")), titles);
+check("Standardwerte im Formular", form.data.theme === "auto" && form.data.photos === true, form.data);
+
+// 2) Namen + Modell für AP setzen, ohne Geräte auszuwählen (Automatik bleibt)
+form.emit({ ...form.data, geraet_ap1: { name: "AP Wohnzimmer", model: "u7lite", image: "" } });
+check("Override wird gespeichert", last.overrides?.ap1?.name === "AP Wohnzimmer" && last.overrides.ap1.model === "u7lite", last);
+check("Leere Felder werden nicht gespeichert", !("image" in last.overrides.ap1), last);
+check("Automatik bleibt erhalten (kein devices)", !("devices" in last), last);
+check("Keine Standardwerte im YAML", !("theme" in last) && !("photos" in last) && !("show_ports" in last), last);
+check("Keine Hilfsfelder im YAML", !Object.keys(last).some((k) => k.startsWith("geraet_")), last);
+
+// 3) Design auf dunkel, Fotos aus
+form.emit({ ...form.data, theme: "dark", photos: false });
+check("Design + Fotos aus gespeichert", last.theme === "dark" && last.photos === false, last);
+check("Override bleibt dabei erhalten", last.overrides?.ap1?.name === "AP Wohnzimmer", last);
+
+// 4) Nur den UDR auswählen → AP-Einstellungen fallen weg, Bereich verschwindet
+form.emit({ ...form.data, devices: ["udr"] });
+check("Geräteauswahl gespeichert", JSON.stringify(last.devices) === '["udr"]', last);
+check("Einstellungen nicht gewählter Geräte entfernt", !last.overrides?.ap1, last);
+check("Formular zeigt nur noch gewählte Geräte", !form.schema.some((s) => s.title?.startsWith("AP Flur")), form.schema.map((s) => s.title));
+
+// 5) Alte YAML-Form wird übernommen
+ed.setConfig({ type: "custom:unifi-network-card", devices: [{ device: "ap1", name: "Alt", model: "ap-round" }] });
+check("Alte Objekt-Form wird ins Formular geladen", form.data.geraet_ap1?.name === "Alt", form.data);
+form.emit({ ...form.data });
+check("…und als overrides gespeichert", JSON.stringify(last.devices) === '["ap1"]' && last.overrides?.ap1?.model === "ap-round", last);
+
+// 6) Karte versteht das neue Format
+const card = document.createElement("unifi-network-card");
+card.setConfig({ type: "custom:unifi-network-card", overrides: { ap1: { name: "AP Wohnzimmer" } } });
+check("Karte nutzt override-Namen", card._override?.("ap1")?.name === "AP Wohnzimmer");
+
+document.getElementById("out").textContent = results.join("\n") + `\n\n${results.filter((r) => r.startsWith("❌")).length} Fehler`;
+</script>
+</body></html>

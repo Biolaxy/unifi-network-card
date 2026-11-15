@@ -12,16 +12,9 @@ nicht lädt) bekommen eine gezeichnete Grafik nach echtem Vorbild.
 
 Die Fotos werden zur Laufzeit von Ubiquitis Bild-CDN (`images.svc.ui.com`) geladen, also vom
 Browser, der das Dashboard anzeigt. Ohne Internet (oder für weitere Modelle) kannst du eigene
-Bilder verwenden: transparentes PNG nach `/config/www/unifi/` legen und so einbinden:
-
-```yaml
-images:                      # pro Modell
-  udr7: /local/unifi/udr7.png
-devices:
-  - device: 9f8e7d6c...
-    image: /local/unifi/mein-switch.png   # pro Gerät
-photos: false                # nur gezeichnete Grafiken verwenden
-```
+Bilder verwenden: transparentes PNG nach `/config/www/unifi/` legen und im Karten-Editor beim
+jeweiligen Gerät unter **Eigenes Bild** z. B. `/local/unifi/mein-ap.png` eintragen. Mit dem Schalter
+**Original-Produktfotos verwenden** kannst du die Fotos ganz abschalten.
 
 Die Entitäten werden **automatisch über das Gerät** gefunden – egal wie die Entity-IDs heißen.
 
@@ -40,7 +33,7 @@ Updates erscheinen danach automatisch in HACS.
 
 1. `unifi-network-card.js` nach `/config/www/` kopieren (z. B. mit der App „File editor“ oder „Samba share“).
 2. **Einstellungen → Dashboards → ⋮ → Ressourcen → Ressource hinzufügen**
-   - URL: `/local/unifi-network-card.js?v=1.2.0`
+   - URL: `/local/unifi-network-card.js?v=1.3.0`
    - Typ: **JavaScript-Modul**
 3. Browser-Cache leeren bzw. Seite neu laden (Strg/Cmd + Shift + R).
 4. Im Dashboard **Karte hinzufügen → „UniFi Network Card“** wählen.
@@ -56,23 +49,46 @@ und u. a. diese aktivieren:
 - *Uptime*, *State*, *Clients*, *CPU utilization*, *Memory utilization*, *Temperature*
 - je Port: *RX*, *TX*, *Link speed* (falls vorhanden), *PoE*, *PoE Power*
 
-## Konfiguration (YAML)
+## Konfiguration – komplett grafisch
+
+Alles lässt sich im Karten-Editor einstellen, YAML ist nicht nötig:
+
+**Darstellung**
+- Titel, Design (Automatisch / Hell / Dunkel)
+- Original-Produktfotos an/aus
+- Ports, Firmware & Updates und Neustart-Button ein-/ausblenden
+
+**Geräte**
+- Geräte auswählen – leer lassen zeigt alle UniFi-Geräte automatisch
+
+**Pro Gerät** (aufklappbarer Bereich je Gerät)
+- Anzeigename
+- Darstellung erzwingen, falls ein Gerät falsch erkannt wird (z. B. „U7 Lite (Foto)“)
+- Eigenes Bild (URL)
+
+<details>
+<summary>YAML-Referenz (optional)</summary>
 
 ```yaml
 type: custom:unifi-network-card
-title: Netzwerk            # optional
-theme: auto                # auto (folgt dem HA-Theme) | light | dark
-devices:                   # optional – leer = alle UniFi-Geräte automatisch
-  - 1a2b3c4d5e...          # Geräte-ID (am einfachsten über den visuellen Editor wählen)
-  - device: 9f8e7d6c...
-    name: AP Wohnzimmer    # eigener Name
-    model: u7lite          # Darstellung erzwingen
-show_ports: true
-show_firmware: true
-show_restart: true
+title: Netzwerk
+theme: dark                # auto (Standard) | light | dark
+photos: false              # Standard: true
+devices:                   # weglassen = alle UniFi-Geräte automatisch
+  - 1a2b3c4d5e...
+overrides:                 # Einstellungen pro Gerät (Geräte-ID)
+  1a2b3c4d5e...:
+    name: AP Wohnzimmer
+    model: u7lite          # udr7, udr, u7lite, u6lite, ap-round, ap-square, switch, gateway
+    image: /local/unifi/mein-ap.png
+show_ports: false          # Standard: true
+show_firmware: false       # Standard: true
+show_restart: false        # Standard: true
 ```
 
-Mögliche Werte für `model`: `udr7`, `udr`, `u7lite`, `u6lite`, `ap-round`, `ap-square`, `switch`, `gateway`.
+Die ältere Form mit Objekten in `devices` (`- device: … name: …`) funktioniert weiterhin und wird
+beim Öffnen im Editor automatisch übernommen.
+</details>
 
 ## Bedienung
 
@@ -82,7 +98,8 @@ Mögliche Werte für `model`: `udr7`, `udr`, `u7lite`, `u6lite`, `ap-round`, `ap
 
 ## Testen ohne Home Assistant
 
-`test.html` enthält simulierte Daten (UDR7, U7 Lite online/offline). Im Ordner einen
+`test.html` enthält simulierte Daten (UDR7, U7 Lite online/offline), `editor-test.html` prüft die
+Logik des grafischen Editors. Im Ordner einen
 lokalen Webserver starten und `http://localhost:8765/test.html` öffnen (`#dark` für Dunkelmodus):
 
 ```bash

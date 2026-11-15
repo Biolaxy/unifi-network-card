@@ -3,7 +3,7 @@
  * Realistische SVG-Darstellung (UDR7, U7 Lite, generische APs/Switches/Gateways),
  * automatische Entitätserkennung pro Gerät, Ports, Clients, Firmware, Neustart.
  */
-const UNC_VERSION = "1.2.0";
+const UNC_VERSION = "1.3.0";
 
 /* ---------- Hilfsfunktionen ---------- */
 const esc = (s) =>
@@ -593,43 +593,145 @@ function findUnifiDevices(hass) {
 }
 
 /* ---------- Visueller Editor ---------- */
+const MODEL_OPTIONS = [
+  { value: "", label: "Automatisch erkennen" },
+  { value: "udr7", label: "Dream Router 7 (Foto)" },
+  { value: "u7lite", label: "U7 Lite (Foto)" },
+  { value: "udr", label: "Dream Router" },
+  { value: "u6lite", label: "U6 Lite" },
+  { value: "ap-round", label: "Access Point (rund)" },
+  { value: "ap-square", label: "Access Point (eckig)" },
+  { value: "switch", label: "Switch" },
+  { value: "gateway", label: "Gateway" },
+];
+const EDITOR_LABELS = {
+  title: "Titel (optional)",
+  theme: "Design",
+  devices: "Geräte",
+  show_ports: "Ports anzeigen",
+  show_firmware: "Firmware & Updates anzeigen",
+  show_restart: "Neustart-Button anzeigen",
+  photos: "Original-Produktfotos verwenden",
+  name: "Anzeigename",
+  model: "Darstellung",
+  image: "Eigenes Bild (URL)",
+};
+const EDITOR_HELPERS = {
+  devices: "Leer lassen, um alle UniFi-Geräte automatisch anzuzeigen.",
+  photos: "Aus: gezeichnete Grafiken statt Fotos von Ubiquiti.",
+  name: "Leer = Name aus Home Assistant",
+  model: "Nur ändern, wenn das Gerät falsch erkannt wird.",
+  image: "z. B. /local/unifi/mein-ap.png – leer = Originalfoto bzw. Grafik",
+};
+const OV_PREFIX = "geraet_";
+
 class UnifiNetworkCardEditor extends HTMLElement {
-  setConfig(config) { this._config = config; this._render(); }
-  set hass(hass) { this._hass = hass; if (this._form) this._form.hass = hass; else this._render(); }
+  setConfig(config) { this._config = { ...config }; this._render(); }
+  set hass(hass) {
+    const first = !this._hass;
+    this._hass = hass;
+    if (this._form) this._form.hass = hass;
+    if (first) this._render();
+  }
+
+  // Geräte, für die Einstellungen angezeigt werden (gewählte oder automatisch gefundene)
+  _shownDevices() {
+    const list = (this._config.devices || []).map((d) => (typeof d === "string" ? d : d.device)).filter(Boolean);
+    return list.length ? list : findUnifiDevices(this._hass);
+  }
+
+  // Alte YAML-Form (Objekte in devices) in overrides übernehmen
+  _overrides() {
+    const o = { ...(this._config.overrides || {}) };
+    for (const d of this._config.devices || []) {
+      if (typeof d === "object" && d.device) {
+        const { device, ...rest } = d;
+        o[device] = { ...rest, ...(o[device] || {}) };
+      }
+    }
+    return o;
+  }
+
+  _schema(ids) {
+    const devName = (id) => {
+      const d = this._hass.devices?.[id];
+      if (!d) return id;
+      const model = detectProfile(d, { ports: [] }).label || d.model || "";
+      return `${d.name_by_user || d.name || id}${model ? ` · ${model}` : ""}`;
+    };
+    return [
+      { type: "expandable", name: "", flatten: true, title: "Darstellung", icon: "mdi:palette-outline", expanded: true, schema: [
+        { name: "title", selector: { text: {} } },
+        { name: "theme", selector: { select: { mode: "dropdown", options: [
+          { value: "auto", label: "Automatisch (wie Home-Assistant-Theme)" },
+          { value: "light", label: "Hell" },
+          { value: "dark", label: "Dunkel" },
+        ] } } },
+        { name: "photos", selector: { boolean: {} } },
+        { type: "grid", name: "", schema: [
+          { name: "show_ports", selector: { boolean: {} } },
+          { name: "show_firmware", selector: { boolean: {} } },
+          { name: "show_restart", selector: { boolean: {} } },
+        ] },
+      ] },
+      { type: "expandable", name: "", flatten: true, title: "Geräte", icon: "mdi:router-wireless", expanded: true, schema: [
+        { name: "devices", selector: { device: { multiple: true, filter: { integration: "unifi" } } } },
+      ] },
+      ...ids.map((id) => ({
+        type: "expandable", name: OV_PREFIX + id, title: devName(id), icon: "mdi:tune-variant", schema: [
+          { name: "name", selector: { text: {} } },
+          { name: "model", selector: { select: { mode: "dropdown", options: MODEL_OPTIONS } } },
+          { name: "image", selector: { text: {} } },
+        ],
+      })),
+    ];
+  }
+
   _render() {
     if (!this._hass || !this._config) return;
     if (!this._form) {
       this._form = document.createElement("ha-form");
-      this._form.computeLabel = (s) => ({
-        title: "Titel", devices: "UniFi-Geräte (leer = alle automatisch)", show_ports: "Ports anzeigen",
-        show_firmware: "Firmware anzeigen", show_restart: "Neustart-Button anzeigen", theme: "Design",
-      }[s.name] || s.name);
-      this._form.addEventListener("value-changed", (ev) => {
-        const v = { ...ev.detail.value };
-        if (!v.devices?.length) delete v.devices;
-        if (!v.title) delete v.title;
-        this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: v }, bubbles: true, composed: true }));
-      });
+      this._form.computeLabel = (s) => EDITOR_LABELS[s.name] || s.title || s.name;
+      this._form.computeHelper = (s) => EDITOR_HELPERS[s.name];
+      this._form.addEventListener("value-changed", (ev) => this._changed(ev.detail.value));
       this.appendChild(this._form);
     }
+    const ids = this._shownDevices();
+    const key = ids.join(",");
+    if (key !== this._schemaKey) { this._schemaKey = key; this._form.schema = this._schema(ids); }
+    const ov = this._overrides();
+    const data = {
+      theme: "auto", photos: true, show_ports: true, show_firmware: true, show_restart: true,
+      ...this._config,
+      devices: (this._config.devices || []).map((d) => (typeof d === "string" ? d : d.device)).filter(Boolean),
+    };
+    delete data.overrides;
+    for (const id of ids) data[OV_PREFIX + id] = { name: "", model: "", image: "", ...(ov[id] || {}) };
     this._form.hass = this._hass;
-    this._form.schema = [
-      { name: "title", selector: { text: {} } },
-      { name: "theme", selector: { select: { mode: "dropdown", options: [
-        { value: "auto", label: "Automatisch (Home-Assistant-Theme)" },
-        { value: "light", label: "Hell" },
-        { value: "dark", label: "Dunkel" },
-      ] } } },
-      { name: "devices", selector: { device: { multiple: true, filter: { integration: "unifi" } } } },
-      { type: "grid", name: "", schema: [
-        { name: "show_ports", selector: { boolean: {} } },
-        { name: "show_firmware", selector: { boolean: {} } },
-        { name: "show_restart", selector: { boolean: {} } },
-      ] },
-    ];
-    const c = { theme: "auto", show_ports: true, show_firmware: true, show_restart: true, ...this._config };
-    c.devices = (c.devices || []).map((d) => (typeof d === "string" ? d : d.device));
-    this._form.data = c;
+    this._form.data = data;
+  }
+
+  _changed(value) {
+    const v = { ...value };
+    const overrides = { ...this._overrides() };
+    for (const k of Object.keys(v)) {
+      if (!k.startsWith(OV_PREFIX)) continue;
+      const id = k.slice(OV_PREFIX.length);
+      const clean = Object.fromEntries(Object.entries(v[k] || {}).filter(([, x]) => x !== "" && x != null));
+      if (Object.keys(clean).length) overrides[id] = clean; else delete overrides[id];
+      delete v[k];
+    }
+    v.devices = (v.devices || []).filter(Boolean);
+    if (!v.devices.length) delete v.devices;
+    // Einstellungen von Geräten, die nicht mehr angezeigt werden, entfernen
+    if (v.devices) for (const id of Object.keys(overrides)) if (!v.devices.includes(id)) delete overrides[id];
+    if (Object.keys(overrides).length) v.overrides = overrides; else delete v.overrides;
+    if (!v.title) delete v.title;
+    if (v.theme === "auto") delete v.theme;
+    for (const k of ["photos", "show_ports", "show_firmware", "show_restart"]) if (v[k] === true) delete v[k];
+    this._config = v;
+    this._render();
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: v }, bubbles: true, composed: true }));
   }
 }
 
