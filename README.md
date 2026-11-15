@@ -40,7 +40,7 @@ Updates erscheinen danach automatisch in HACS.
 
 1. `unifi-network-card.js` nach `/config/www/` kopieren (z. B. mit der App „File editor“ oder „Samba share“).
 2. **Einstellungen → Dashboards → ⋮ → Ressourcen → Ressource hinzufügen**
-   - URL: `/local/unifi-network-card.js?v=1.1.1`
+   - URL: `/local/unifi-network-card.js?v=1.2.0`
    - Typ: **JavaScript-Modul**
 3. Browser-Cache leeren bzw. Seite neu laden (Strg/Cmd + Shift + R).
 4. Im Dashboard **Karte hinzufügen → „UniFi Network Card“** wählen.
@@ -61,6 +61,7 @@ und u. a. diese aktivieren:
 ```yaml
 type: custom:unifi-network-card
 title: Netzwerk            # optional
+theme: auto                # auto (folgt dem HA-Theme) | light | dark
 devices:                   # optional – leer = alle UniFi-Geräte automatisch
   - 1a2b3c4d5e...          # Geräte-ID (am einfachsten über den visuellen Editor wählen)
   - device: 9f8e7d6c...

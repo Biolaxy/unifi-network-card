@@ -3,7 +3,7 @@
  * Realistische SVG-Darstellung (UDR7, U7 Lite, generische APs/Switches/Gateways),
  * automatische Entitätserkennung pro Gerät, Ports, Clients, Firmware, Neustart.
  */
-const UNC_VERSION = "1.1.1";
+const UNC_VERSION = "1.2.0";
 
 /* ---------- Hilfsfunktionen ---------- */
 const esc = (s) =>
@@ -268,7 +268,7 @@ function portInfo(hass, port) {
   if (!enabled) status = "disabled";
   else if (speed !== null) status = speed > 0 ? "up" : "down";
   else if (rx !== null || tx !== null) status = (rx || 0) + (tx || 0) > 0 ? "up" : "idle";
-  let color = "#3a424c";
+  let color = "var(--unc-led-off)";
   if (status === "up") color = speed >= 2500 ? "#2f8cff" : speed !== null && speed < 1000 ? "#ffb020" : "#34c759";
   if (status === "idle") color = "#6b7a88";
   const fn = hass.states[port.rx || port.tx || port.poe || port.speed || port.enable]?.attributes?.friendly_name || "";
@@ -301,12 +301,12 @@ function renderPorts(hass, ports, deviceName) {
       return `
       <button class="port ${i.status}" data-entity="${esc(target)}" title="${esc(tip)}">
         <svg viewBox="0 0 30 26" class="jack">
-          <rect x="1" y="1" width="28" height="24" rx="3" fill="#2b323b"/>
-          <rect x="4" y="5" width="22" height="15" rx="1.5" fill="#07090c"/>
-          <rect x="10" y="20" width="10" height="3" fill="#07090c"/>
+          <rect x="1" y="1" width="28" height="24" rx="3" class="jf"/>
+          <rect x="4" y="5" width="22" height="15" rx="1.5" class="jh"/>
+          <rect x="10" y="20" width="10" height="3" class="jh"/>
           ${Array.from({ length: 8 }, (_, k) => `<rect x="${6 + k * 2.4}" y="6" width="1.2" height="4" fill="#b08d3c"/>`).join("")}
-          <rect x="3" y="2" width="5" height="2" rx="1" fill="${i.color}" class="${i.status === "up" ? "blink" : ""}"/>
-          <rect x="22" y="2" width="5" height="2" rx="1" fill="${i.poeOn ? "#ffb020" : "#3a424c"}"/>
+          <rect x="3" y="2" width="5" height="2" rx="1" style="fill:${i.color}" class="${i.status === "up" ? "blink" : ""}"/>
+          <rect x="22" y="2" width="5" height="2" rx="1" style="fill:${i.poeOn ? "#ffb020" : "var(--unc-led-off)"}"/>
         </svg>
         <span class="plabel">${esc(portLabel(port, i, deviceName))}</span>
         ${i.status === "up" && (i.rx !== null || i.tx !== null) ? `<span class="prate">${esc(fmtMbit((i.rx || 0) + (i.tx || 0)))}</span>` : ""}
@@ -318,19 +318,26 @@ function renderPorts(hass, ports, deviceName) {
 /* ---------- Styles ---------- */
 const STYLE = `
 :host { --unc-ok:#2f8cff; --unc-bad:#ff4d4f; --unc-busy:#ffb020; }
-ha-card { overflow:hidden; container-type:inline-size; padding:4px 0; }
-.title { font-size:1.15rem; font-weight:500; padding:12px 16px 4px; color:var(--primary-text-color); }
+ha-card { display:block; border-radius:var(--ha-card-border-radius, 12px); overflow:hidden; container-type:inline-size; padding:4px 0;
+  --unc-text: var(--primary-text-color, #1c1c1e); --unc-text2: var(--secondary-text-color, #6b7078);
+  --unc-tile: var(--secondary-background-color, rgba(127,127,127,.08)); --unc-divider: var(--divider-color, rgba(127,127,127,.2));
+  --unc-jack: color-mix(in srgb, var(--unc-text2) 28%, var(--unc-tile)); --unc-hole: #1d2228; --unc-led-off: color-mix(in srgb, var(--unc-text2) 45%, transparent); }
+ha-card.light { --ha-card-background:#ffffff; background:#ffffff; color:#1c1c1e; color-scheme:light;
+  --unc-text:#1c1c1e; --unc-text2:#6b7078; --unc-tile:#f2f3f5; --unc-divider:#e6e7ea; --unc-jack:#dcdfe3; --unc-hole:#262b31; --unc-led-off:#c3c7cc; }
+ha-card.dark { --ha-card-background:#1c1c1e; background:#1c1c1e; color:#f2f2f4; color-scheme:dark;
+  --unc-text:#f2f2f4; --unc-text2:#9a9ca3; --unc-tile:#2a2a2d; --unc-divider:#333338; --unc-jack:#41464e; --unc-hole:#0c0e11; --unc-led-off:#555a62; }
+.title { font-size:1.15rem; font-weight:500; padding:12px 16px 4px; color:var(--unc-text); }
 .dev { padding:12px 16px 14px; }
-.dev + .dev { border-top:1px solid var(--divider-color, rgba(127,127,127,.2)); }
+.dev + .dev { border-top:1px solid var(--unc-divider); }
 .head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
-.name { font-weight:600; font-size:1rem; color:var(--primary-text-color); cursor:pointer; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.model { font-size:.78rem; color:var(--secondary-text-color); font-weight:400; }
+.name { font-weight:600; font-size:1rem; color:var(--unc-text); cursor:pointer; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.model { font-size:.78rem; color:var(--unc-text2); font-weight:400; }
 .pill { font-size:.72rem; font-weight:600; padding:3px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; white-space:nowrap; }
 .pill::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; }
 .pill.ok { color:var(--unc-ok); background:color-mix(in srgb, var(--unc-ok) 14%, transparent); }
 .pill.bad { color:var(--unc-bad); background:color-mix(in srgb, var(--unc-bad) 14%, transparent); }
 .pill.busy { color:var(--unc-busy); background:color-mix(in srgb, var(--unc-busy) 16%, transparent); }
-.pill.unknown { color:var(--secondary-text-color); background:rgba(127,127,127,.15); }
+.pill.unknown { color:var(--unc-text2); background:rgba(127,127,127,.15); }
 .body { display:grid; grid-template-columns: 150px 1fr; gap:14px; align-items:center; }
 .stage { position:relative; display:flex; justify-content:center; align-items:center; aspect-ratio:1/1.1;
   border-radius:16px; background:radial-gradient(circle at 50% 40%, rgba(127,127,127,.10), transparent 70%); cursor:pointer; }
@@ -351,32 +358,33 @@ ha-card { overflow:hidden; container-type:inline-size; padding:4px 0; }
 .lcd-h { font-size:8px; fill:#fff; }
 .lcd-dim { fill:#7e8a97; font-weight:500; }
 .stats { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:8px; }
-.stat { background:var(--secondary-background-color, rgba(127,127,127,.08)); border-radius:12px; padding:8px 10px; cursor:pointer; min-width:0; }
+.stat { background:var(--unc-tile); border-radius:12px; padding:8px 10px; cursor:pointer; min-width:0; }
 .stat:hover { filter:brightness(1.06); }
-.slabel { font-size:.7rem; color:var(--secondary-text-color); display:flex; align-items:center; gap:4px; }
+.slabel { font-size:.7rem; color:var(--unc-text2); display:flex; align-items:center; gap:4px; }
 .slabel ha-icon { --mdc-icon-size:14px; }
-.sval { font-size:.98rem; font-weight:600; color:var(--primary-text-color); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sval { font-size:.98rem; font-weight:600; color:var(--unc-text); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .bar { height:4px; border-radius:2px; background:rgba(127,127,127,.2); margin-top:5px; overflow:hidden; }
 .bar > i { display:block; height:100%; border-radius:2px; background:var(--unc-ok); }
 .bar > i.warn { background:var(--unc-busy); } .bar > i.crit { background:var(--unc-bad); }
 .ports { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; padding:10px; border-radius:12px;
-  background:linear-gradient(180deg,#252b33,#171b20); box-shadow: inset 0 1px 0 rgba(255,255,255,.06); }
+  background:var(--unc-tile); }
+.jf { fill:var(--unc-jack); } .jh { fill:var(--unc-hole); }
 .port { all:unset; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; width:46px; }
 .port:focus-visible { outline:2px solid var(--unc-ok); border-radius:6px; }
 .jack { width:34px; height:30px; }
-.plabel { font-size:.62rem; color:#c9d1d9; max-width:46px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.prate { font-size:.56rem; color:#8fa3b5; white-space:nowrap; }
+.plabel { font-size:.62rem; color:var(--unc-text); font-weight:500; max-width:46px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.prate { font-size:.56rem; color:var(--unc-text2); white-space:nowrap; }
 .port.disabled { opacity:.45; }
 .blink { animation: blink 1.6s infinite steps(2, jump-none); }
 @keyframes blink { 50% { opacity:.55; } }
 .foot { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; align-items:center; }
 .chip { all:unset; cursor:pointer; font-size:.75rem; padding:5px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:5px;
-  background:rgba(127,127,127,.12); color:var(--primary-text-color); }
+  background:rgba(127,127,127,.12); color:var(--unc-text); }
 .chip ha-icon { --mdc-icon-size:15px; }
 .chip.upd { background:color-mix(in srgb, var(--unc-busy) 18%, transparent); color:var(--unc-busy); font-weight:600; }
 .chip.warn { color:var(--unc-bad); }
 .spacer { flex:1; }
-.empty { padding:16px; color:var(--secondary-text-color); font-size:.9rem; }
+.empty { padding:16px; color:var(--unc-text2); font-size:.9rem; }
 @container (max-width: 380px) {
   .body { grid-template-columns: 1fr; }
   .stage { max-width:170px; margin:0 auto; width:100%; }
@@ -394,7 +402,7 @@ class UnifiNetworkCard extends HTMLElement {
 
   setConfig(config) {
     if (!config) throw new Error("Ungültige Konfiguration");
-    this._config = { show_ports: true, show_firmware: true, show_restart: true, ...config };
+    this._config = { theme: "auto", show_ports: true, show_firmware: true, show_restart: true, ...config };
     this._sig = null;
     if (this._hass) this._render();
   }
@@ -448,7 +456,7 @@ class UnifiNetworkCard extends HTMLElement {
     const body = ids.length
       ? ids.map((id, i) => this._renderDevice(id, i)).join("")
       : `<div class="empty">Keine UniFi-Geräte gefunden. Ist die Integration „UniFi Network“ eingerichtet?</div>`;
-    this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card>${title}${body}</ha-card>`;
+    this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card class="${["light", "dark"].includes(this._config.theme) ? this._config.theme : ""}">${title}${body}</ha-card>`;
     this.shadowRoot.querySelectorAll("img[data-src]").forEach((img) =>
       img.addEventListener("error", () => { failedImages.add(img.dataset.src); this._sig = null; this._render(); }, { once: true }));
   }
@@ -594,7 +602,7 @@ class UnifiNetworkCardEditor extends HTMLElement {
       this._form = document.createElement("ha-form");
       this._form.computeLabel = (s) => ({
         title: "Titel", devices: "UniFi-Geräte (leer = alle automatisch)", show_ports: "Ports anzeigen",
-        show_firmware: "Firmware anzeigen", show_restart: "Neustart-Button anzeigen",
+        show_firmware: "Firmware anzeigen", show_restart: "Neustart-Button anzeigen", theme: "Design",
       }[s.name] || s.name);
       this._form.addEventListener("value-changed", (ev) => {
         const v = { ...ev.detail.value };
@@ -607,6 +615,11 @@ class UnifiNetworkCardEditor extends HTMLElement {
     this._form.hass = this._hass;
     this._form.schema = [
       { name: "title", selector: { text: {} } },
+      { name: "theme", selector: { select: { mode: "dropdown", options: [
+        { value: "auto", label: "Automatisch (Home-Assistant-Theme)" },
+        { value: "light", label: "Hell" },
+        { value: "dark", label: "Dunkel" },
+      ] } } },
       { name: "devices", selector: { device: { multiple: true, filter: { integration: "unifi" } } } },
       { type: "grid", name: "", schema: [
         { name: "show_ports", selector: { boolean: {} } },
@@ -614,7 +627,7 @@ class UnifiNetworkCardEditor extends HTMLElement {
         { name: "show_restart", selector: { boolean: {} } },
       ] },
     ];
-    const c = { show_ports: true, show_firmware: true, show_restart: true, ...this._config };
+    const c = { theme: "auto", show_ports: true, show_firmware: true, show_restart: true, ...this._config };
     c.devices = (c.devices || []).map((d) => (typeof d === "string" ? d : d.device));
     this._form.data = c;
   }

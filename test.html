@@ -66,8 +66,9 @@ const hass = {
   callService: (...a) => console.log("callService", a),
 };
 const mk = (cfg) => { const c = document.createElement("unifi-network-card"); c.setConfig(cfg); c.hass = hass; document.body.appendChild(c); return c; };
-mk({ title: "Netzwerk" });
-mk({ devices: ["ap1"] });
+mk({ title: "Netzwerk (automatisch)" });
+mk({ title: "Hell", theme: "light", devices: ["udr"] });
+mk({ title: "Dunkel", theme: "dark", devices: ["udr", "ap1"] });
 </script>
 </body>
 </html>
