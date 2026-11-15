@@ -3,7 +3,7 @@
  * Realistische SVG-Darstellung (UDR7, U7 Lite, generische APs/Switches/Gateways),
  * automatische Entitätserkennung pro Gerät, Ports, Clients, Firmware, Neustart.
  */
-const UNC_VERSION = "1.3.2";
+const UNC_VERSION = "1.3.3";
 
 /* ---------- Hilfsfunktionen ---------- */
 const esc = (s) =>
@@ -32,6 +32,12 @@ const fmtMbit = (m) => {
   if (m >= 10) return `${m.toFixed(0)} Mbit/s`;
   if (m >= 1) return `${m.toFixed(1)} Mbit/s`;
   return `${Math.round(m * 1000)} kbit/s`;
+};
+const fmtSpeed = (m) => {
+  if (m === null || m === undefined) return null;
+  if (m <= 0) return "getrennt";
+  if (m >= 1000) return `${+(m / 1000).toFixed(1)} Gbit/s`;
+  return `${Math.round(m)} Mbit/s`;
 };
 const fmtUptime = (hass, id) => {
   const s = id && hass.states[id];
@@ -302,7 +308,7 @@ function renderPorts(hass, ports, deviceName) {
       const i = portInfo(hass, port);
       const tip = [
         portLabel(port, i, deviceName),
-        i.speed !== null ? `${i.speed >= 1000 ? i.speed / 1000 + " Gbit/s" : i.speed + " Mbit/s"}` : null,
+        fmtSpeed(i.speed),
         i.rx !== null ? `↓ ${fmtMbit(i.rx)}` : null,
         i.tx !== null ? `↑ ${fmtMbit(i.tx)}` : null,
         i.poeOn ? `PoE ${i.poeW !== null ? i.poeW.toFixed(1) + " W" : "an"}` : null,
@@ -320,6 +326,7 @@ function renderPorts(hass, ports, deviceName) {
           <rect x="22" y="2" width="5" height="2" rx="1" style="fill:${i.poeOn ? "#ffb020" : "var(--unc-led-off)"}"/>
         </svg>
         <span class="plabel">${esc(portLabel(port, i, deviceName))}</span>
+        ${i.speed !== null ? `<span class="pspeed ${i.speed > 0 ? "" : "off"}">${esc(fmtSpeed(i.speed))}</span>` : ""}
         ${i.status === "up" && (i.rx !== null || i.tx !== null) ? `<span class="prate">${esc(fmtMbit((i.rx || 0) + (i.tx || 0)))}</span>` : ""}
       </button>`;
     }).join("")}
@@ -381,11 +388,13 @@ ha-card.dark { --ha-card-background:#1c1c1e; background:#1c1c1e; color:#f2f2f4; 
 .ports { display:flex; flex-wrap:wrap; gap:6px; margin-top:12px; padding:10px; border-radius:12px;
   background:var(--unc-tile); }
 .jf { fill:var(--unc-jack); } .jh { fill:var(--unc-hole); }
-.port { all:unset; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; width:46px; }
+.port { all:unset; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; width:52px; }
 .port:focus-visible { outline:2px solid var(--unc-ok); border-radius:6px; }
 .jack { width:34px; height:30px; }
 .plabel { font-size:.62rem; color:var(--unc-text); font-weight:500; max-width:46px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .prate { font-size:.56rem; color:var(--unc-text2); white-space:nowrap; }
+.pspeed { font-size:.6rem; color:var(--unc-text2); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.pspeed.off { opacity:.6; }
 .port.disabled { opacity:.45; }
 .blink { animation: blink 1.6s infinite steps(2, jump-none); }
 @keyframes blink { 50% { opacity:.55; } }

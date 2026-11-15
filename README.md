@@ -33,7 +33,7 @@ Updates erscheinen danach automatisch in HACS.
 
 1. `unifi-network-card.js` nach `/config/www/` kopieren (z. B. mit der App „File editor“ oder „Samba share“).
 2. **Einstellungen → Dashboards → ⋮ → Ressourcen → Ressource hinzufügen**
-   - URL: `/local/unifi-network-card.js?v=1.3.2`
+   - URL: `/local/unifi-network-card.js?v=1.3.3`
    - Typ: **JavaScript-Modul**
 3. Browser-Cache leeren bzw. Seite neu laden (Strg/Cmd + Shift + R).
 4. Im Dashboard **Karte hinzufügen → „UniFi Network Card“** wählen.
