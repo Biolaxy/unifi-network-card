@@ -33,7 +33,7 @@ function build(allEnabled) {
   add("sensor.dream_router_7_clients", R, 27, { friendly_name: "Dream Router 7 Clients" }, false);
   add("sensor.dream_router_7_cpu_temperatur", R, 61, { device_class: "temperature", unit_of_measurement: "°C", friendly_name: "Dream Router 7 CPU Temperatur" }, false);
   add("sensor.dream_router_7_cloudflare_wan_latenz", R, 9, { device_class: "duration", unit_of_measurement: "ms", friendly_name: "Dream Router 7 Cloudflare WAN Latenz" }, false);
-  [[1, 1000], [2, 1000], [3, 0], [4, 2500]].forEach(([n, sp]) => {
+  [[1, 100], [2, 1000], [3, 10], [4, 10]].forEach(([n, sp]) => {
     add(`sensor.dream_router_7_port_${n}_verbindungsgeschwindigkeit`, R, sp, { device_class: "data_rate", unit_of_measurement: "Mbit/s", friendly_name: `Dream Router 7 Port ${n} Verbindungsgeschwindigkeit` }, false);
     add(`switch.dream_router_7_port_${n}`, R, "on", { friendly_name: `Dream Router 7 Port ${n}` }, false);
   });
@@ -81,6 +81,9 @@ ok("UDR7: Profil = Dream Router 7", detectProfile(h.devices.udr, dU).key === "ud
 ok("U7 Lite: Profil = U7 Lite", detectProfile(h.devices.ap, dA).key === "u7lite");
 ok("U7 Lite: Betriebszeit/Zustand/Neustart", dA.uptime && dA.state && dA.restart === "button.u7_lite_neu_starten", dA);
 ok("Port-Beschriftung SFP+", b.shadowRoot.textContent.includes("SFP+"), "");
+const portTxt = [...b.shadowRoot.querySelectorAll(".port")].map((p) => p.querySelector(".plabel").textContent + ":" + (p.querySelector(".pspeed")?.textContent || "-"));
+ok("Leere Ports (10 Mbit/s) = getrennt", portTxt.join(",") === "P1:100 Mbit/s,P2:1 Gbit/s,P3:getrennt,P4:getrennt,SFP+:10 Gbit/s", portTxt);
+ok("Leere Ports ohne Link-Lampe", [...b.shadowRoot.querySelectorAll(".port")].filter((p) => p.classList.contains("down")).length === 2, "");
 ok("Status Online (Zustand)", a.shadowRoot.querySelector(".pill").textContent === "Online");
 const pre = document.createElement("pre"); pre.textContent = res.join("\n") + `\n${res.filter((x) => x.startsWith("❌")).length} Fehler`; document.body.appendChild(pre);
 </script>

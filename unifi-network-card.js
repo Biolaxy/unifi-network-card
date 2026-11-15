@@ -3,7 +3,7 @@
  * Realistische SVG-Darstellung (UDR7, U7 Lite, generische APs/Switches/Gateways),
  * automatische Entitätserkennung pro Gerät, Ports, Clients, Firmware, Neustart.
  */
-const UNC_VERSION = "1.3.3";
+const UNC_VERSION = "1.3.4";
 
 /* ---------- Hilfsfunktionen ---------- */
 const esc = (s) =>
@@ -33,9 +33,12 @@ const fmtMbit = (m) => {
   if (m >= 1) return `${m.toFixed(1)} Mbit/s`;
   return `${Math.round(m * 1000)} kbit/s`;
 };
+// UniFi meldet für Ports ohne Verbindung oft 10 Mbit/s statt 0 (im Controller steht dann "up: false").
+// Home Assistant reicht nur die Geschwindigkeit weiter, deshalb gilt ≤ 10 Mbit/s als getrennt.
+const LINK_DOWN_MAX_MBIT = 10;
 const fmtSpeed = (m) => {
   if (m === null || m === undefined) return null;
-  if (m <= 0) return "getrennt";
+  if (m <= LINK_DOWN_MAX_MBIT) return "getrennt";
   if (m >= 1000) return `${+(m / 1000).toFixed(1)} Gbit/s`;
   return `${Math.round(m)} Mbit/s`;
 };
@@ -283,7 +286,7 @@ function portInfo(hass, port) {
   const enabled = port.enable ? hass.states[port.enable]?.state !== "off" : true;
   let status = "unknown";
   if (!enabled) status = "disabled";
-  else if (speed !== null) status = speed > 0 ? "up" : "down";
+  else if (speed !== null) status = speed > LINK_DOWN_MAX_MBIT ? "up" : "down";
   else if (rx !== null || tx !== null) status = (rx || 0) + (tx || 0) > 0 ? "up" : "idle";
   let color = "var(--unc-led-off)";
   if (status === "up") color = speed >= 2500 ? "#2f8cff" : speed !== null && speed < 1000 ? "#ffb020" : "#34c759";
@@ -326,7 +329,7 @@ function renderPorts(hass, ports, deviceName) {
           <rect x="22" y="2" width="5" height="2" rx="1" style="fill:${i.poeOn ? "#ffb020" : "var(--unc-led-off)"}"/>
         </svg>
         <span class="plabel">${esc(portLabel(port, i, deviceName))}</span>
-        ${i.speed !== null ? `<span class="pspeed ${i.speed > 0 ? "" : "off"}">${esc(fmtSpeed(i.speed))}</span>` : ""}
+        ${i.speed !== null ? `<span class="pspeed ${i.speed > LINK_DOWN_MAX_MBIT ? "" : "off"}">${esc(fmtSpeed(i.speed))}</span>` : ""}
         ${i.status === "up" && (i.rx !== null || i.tx !== null) ? `<span class="prate">${esc(fmtMbit((i.rx || 0) + (i.tx || 0)))}</span>` : ""}
       </button>`;
     }).join("")}
