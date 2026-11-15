@@ -3,7 +3,7 @@
  * Realistische SVG-Darstellung (UDR7, U7 Lite, generische APs/Switches/Gateways),
  * automatische Entitätserkennung pro Gerät, Ports, Clients, Firmware, Neustart.
  */
-const UNC_VERSION = "1.3.1";
+const UNC_VERSION = "1.3.2";
 
 /* ---------- Hilfsfunktionen ---------- */
 const esc = (s) =>
@@ -353,6 +353,7 @@ ha-card.dark { --ha-card-background:#1c1c1e; background:#1c1c1e; color:#f2f2f4; 
 .stage { position:relative; display:flex; justify-content:center; align-items:center; aspect-ratio:1/1.1;
   border-radius:16px; background:radial-gradient(circle at 50% 40%, rgba(127,127,127,.10), transparent 70%); cursor:pointer; }
 .stage.wide { aspect-ratio:auto; }
+.art-wrap { display:contents; }
 .art { width:100%; height:100%; max-height:190px; filter:drop-shadow(0 6px 10px rgba(0,0,0,.12)); }
 .art-wide { max-height:110px; }
 .offline .art { filter:grayscale(.6) opacity(.7); }
@@ -468,8 +469,31 @@ class UnifiNetworkCard extends HTMLElement {
       ? ids.map((id, i) => this._renderDevice(id, i)).join("")
       : `<div class="empty">Keine UniFi-Geräte gefunden. Ist die Integration „UniFi Network“ eingerichtet?</div>`;
     this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card class="${["light", "dark"].includes(this._config.theme) ? this._config.theme : ""}">${title}${body}</ha-card>`;
-    this.shadowRoot.querySelectorAll("img[data-src]").forEach((img) =>
-      img.addEventListener("error", () => { failedImages.add(img.dataset.src); this._sig = null; this._render(); }, { once: true }));
+    this._placeArts();
+  }
+
+  // Gerätebilder bleiben als DOM-Knoten erhalten und werden nur ersetzt, wenn sich das Bild selbst
+  // (Foto, Status-LED, Grafik) ändert – sonst würde das Foto bei jeder Wertänderung neu gezeichnet und blinken.
+  _placeArts() {
+    this._arts = this._arts || new Map();
+    const pending = this._pendingArts || new Map();
+    for (const [id, html] of pending) {
+      const stage = [...this.shadowRoot.querySelectorAll(".stage[data-art-id]")].find((el) => el.dataset.artId === id);
+      if (!stage) continue;
+      let cached = this._arts.get(id);
+      if (!cached || cached.html !== html) {
+        const node = document.createElement("div");
+        node.className = "art-wrap";
+        node.innerHTML = html;
+        node.querySelectorAll("img[data-src]").forEach((img) =>
+          img.addEventListener("error", () => { failedImages.add(img.dataset.src); this._sig = null; this._render(); }, { once: true }));
+        cached = { html, node };
+        this._arts.set(id, cached);
+      }
+      stage.appendChild(cached.node);
+    }
+    for (const id of [...this._arts.keys()]) if (!pending.has(id)) this._arts.delete(id);
+    this._pendingArts = new Map();
   }
 
   _renderDevice(id, idx) {
@@ -552,6 +576,7 @@ class UnifiNetworkCard extends HTMLElement {
     const restart = this._config.show_restart && d.restart
       ? `<button class="chip warn" data-restart="${esc(d.restart)}" data-name="${esc(name)}"><ha-icon icon="mdi:restart"></ha-icon>Neustart</button>` : "";
 
+    (this._pendingArts = this._pendingArts || new Map()).set(id, art);
     return `
     <div class="dev ${online ? "" : "offline"}">
       <div class="head">
@@ -559,7 +584,7 @@ class UnifiNetworkCard extends HTMLElement {
         <span class="pill ${status.level}">${esc(status.text)}</span>
       </div>
       <div class="body" style="${prof.art === "switch" ? "grid-template-columns:1fr" : ""}">
-        <div class="stage ${prof.art === "switch" ? "wide" : ""}" data-entity="${esc(d.state || d.tracker || d.uptime || "")}">${art}</div>
+        <div class="stage ${prof.art === "switch" ? "wide" : ""}" data-art-id="${esc(id)}" data-entity="${esc(d.state || d.tracker || d.uptime || "")}"></div>
         <div class="stats">${stats || `<div class="empty">${online ? "Keine Sensoren aktiviert – in der UniFi-Integration die Geräte-Sensoren einschalten." : "Gerät ist nicht erreichbar."}</div>`}</div>
       </div>
       ${this._config.show_ports ? renderPorts(h, d.ports, dev.name_by_user || dev.name) : ""}
