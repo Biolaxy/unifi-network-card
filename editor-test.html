@@ -67,6 +67,29 @@ const card = document.createElement("unifi-network-card");
 card.setConfig({ type: "custom:unifi-network-card", overrides: { ap1: { name: "AP Wohnzimmer" } } });
 check("Karte nutzt override-Namen", card._override?.("ap1")?.name === "AP Wohnzimmer");
 
+// 7) Reihenfolge per Pfeil-Knopf
+ed.setConfig({ type: "custom:unifi-network-card" });
+const before = ed._shownDevices().join(",");
+ed.querySelector('.unc-order button[data-move="down"][data-idx="0"]').click();
+check("Pfeil ändert Reihenfolge", JSON.stringify(last.order) === JSON.stringify(before.split(",").reverse()), { before, last });
+check("Automatik bleibt bei Umsortieren", !("devices" in last), last);
+check("Liste zeigt neue Reihenfolge", ed.querySelector(".unc-order .nm").textContent.startsWith("AP Flur"), ed.querySelector(".unc-order .nm").textContent);
+form.emit({ ...form.data, theme: "dark" });
+check("Reihenfolge bleibt bei anderen Änderungen", JSON.stringify(last.order) === JSON.stringify(before.split(",").reverse()), last);
+const card2 = document.createElement("unifi-network-card");
+card2.setConfig({ type: "custom:unifi-network-card", order: ["ap1", "udr"] }); card2.hass = hass;
+check("Karte nutzt Reihenfolge", card2._deviceIds().join(",") === "ap1,udr", card2._deviceIds());
+
+// 8) Modellerkennung über die Ubiquiti-Datenbank
+const det = (model, name) => detectProfile({ model, name }, { ports: [] });
+check("UDMA67A → Dream Router 7", det("UDMA67A", "Router").label === "Dream Router 7", det("UDMA67A", "Router"));
+check("UAPA693 → U7 Lite (umbenannt)", det("UAPA693", "AP Flur").label === "U7 Lite", det("UAPA693", "AP Flur"));
+check("U7LT → AC Lite (nicht U7 Lite)", det("U7LT", "x").label === "AC Lite", det("U7LT", "x"));
+check("Name ohne Code: 'UDM Pro'", det("", "UDM Pro").db?.sku === "UDM-Pro", det("", "UDM Pro"));
+check("Alter Schlüssel model: u7lite", detectProfile({}, { ports: [] }, "u7lite").label === "U7 Lite");
+check("Modell-Auswahl enthält Datenbank", MODEL_OPTIONS.length > 150, MODEL_OPTIONS.length);
+check("Alter Schlüssel im Formular übersetzt", (() => { ed.setConfig({ type: "x", overrides: { ap1: { model: "u7lite" } } }); return form.data.geraet_ap1.model === "U7-Lite"; })(), form.data.geraet_ap1);
+
 document.getElementById("out").textContent = results.join("\n") + `\n\n${results.filter((r) => r.startsWith("❌")).length} Fehler`;
 </script>
 </body></html>

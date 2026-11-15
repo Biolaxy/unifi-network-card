@@ -77,8 +77,8 @@ ok("UDR7: Neustart (nicht Port-Neustart)", dU.restart === "button.dream_router_7
 ok("UDR7: Latenz erkannt", dU.latency === "sensor.dream_router_7_cloudflare_wan_latenz", dU.latency);
 ok("UDR7: 5 Ports inkl. SFP+", dU.ports.length === 5 && dU.ports[4].key.endsWith("sfp_1"), dU.ports.map((p) => p.key));
 ok("UDR7: Port 1 PoE + Leistung + Aus/Ein", !!(dU.ports[0].poe && dU.ports[0].poe_power && dU.ports[0].cycle), dU.ports[0]);
-ok("UDR7: Profil = Dream Router 7", detectProfile(h.devices.udr, dU).key === "udr7");
-ok("U7 Lite: Profil = U7 Lite", detectProfile(h.devices.ap, dA).key === "u7lite");
+ok("UDR7: Profil = Dream Router 7", detectProfile(h.devices.udr, dU).key === "UDR7");
+ok("U7 Lite: Profil = U7 Lite", detectProfile(h.devices.ap, dA).key === "U7-Lite");
 ok("U7 Lite: Betriebszeit/Zustand/Neustart", dA.uptime && dA.state && dA.restart === "button.u7_lite_neu_starten", dA);
 ok("Port-Beschriftung SFP+", b.shadowRoot.textContent.includes("SFP+"), "");
 const portTxt = [...b.shadowRoot.querySelectorAll(".port")].map((p) => p.querySelector(".plabel").textContent + ":" + (p.querySelector(".pspeed")?.textContent || "-"));

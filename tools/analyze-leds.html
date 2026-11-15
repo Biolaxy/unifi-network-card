@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><title>LED-Analyse</title>
+<style>
+  body { font: 12px system-ui, sans-serif; margin: 12px; background: #f4f5f7; }
+  #grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .c { background: #fff; border-radius: 8px; padding: 6px; }
+  .w { position: relative; aspect-ratio: 1; }
+  .w img { width: 100%; height: 100%; object-fit: contain; }
+  .box { position: absolute; outline: 2px solid #ff2d55; border-radius: 2px; }
+  .box.ring { border-radius: 50%; }
+  .n { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .k { color: #666; }
+</style>
+</head>
+<body>
+<p id="status">läuft…</p>
+<div id="grid"></div>
+<script>
+// Ermittelt die blau leuchtende Status-LED in jedem Produktfoto (Pixel mit deutlichem Blauüberhang).
+const SHOP = (p) => `https://images.svc.ui.com/?u=${encodeURIComponent(`https://cdn.ecomm.ui.com/products/${p}.png`)}&q=75&w=320`;
+const APP = (p) => { const [id, h] = p.split("/"); return `https://images.svc.ui.com/?u=${encodeURIComponent(`https://static.ui.com/fingerprint/ui/images/${id}/default/${h}.png`)}&q=75&w=320`; };
+const urlOf = (img) => (img.startsWith("s:") ? SHOP(img.slice(2)) : APP(img.slice(2)));
+
+function load(url) {
+  return new Promise((res, rej) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => res(i); i.onerror = rej; i.src = url; });
+}
+
+function analyze(img) {
+  const W = img.naturalWidth, H = img.naturalHeight;
+  const c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d"); x.drawImage(img, 0, 0);
+  const d = x.getImageData(0, 0, W, H).data;
+  // Umriss des Geräts (nicht transparente Pixel), damit die Karte leeren Rand abschneiden kann
+  let bx0 = W, by0 = H, bx1 = -1, by1 = -1;
+  for (let k = 0; k < W * H; k++) if (d[k * 4 + 3] > 24) {
+    const px = k % W, py = (k - px) / W;
+    if (px < bx0) bx0 = px; if (px > bx1) bx1 = px; if (py < by0) by0 = py; if (py > by1) by1 = py;
+  }
+  const pc = (v, t) => Math.round((v / t) * 1000) / 10;
+  const box = bx1 < 0 ? null : [pc(bx0, W), pc(by0, H), pc(bx1 - bx0 + 1, W), pc(by1 - by0 + 1, H)];
+  const withBox = (o) => ({ ...o, box });
+  // Maske der deutlich blauen Pixel
+  const mask = new Uint8Array(W * H);
+  for (let k = 0; k < W * H; k++) {
+    const i = k * 4, r = d[i], g = d[i + 1], b = d[i + 2], a = d[i + 3];
+    if (a > 150 && b > 140 && b - r > 55 && b - g > 20) mask[k] = 1;
+  }
+  // Größte zusammenhängende Fläche (8er-Nachbarschaft) = Status-LED.
+  // Trennt z. B. beim Dream Router 7 das LED-Band vom blauen Display.
+  const seen = new Uint8Array(W * H);
+  const comps = [];
+  for (let s = 0; s < W * H; s++) {
+    if (!mask[s] || seen[s]) continue;
+    const stack = [s]; seen[s] = 1;
+    let n = 0, minX = W, minY = H, maxX = -1, maxY = -1;
+    while (stack.length) {
+      const k = stack.pop(), px = k % W, py = (k - px) / W;
+      n++; if (px < minX) minX = px; if (px > maxX) maxX = px; if (py < minY) minY = py; if (py > maxY) maxY = py;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = px + dx, ny = py + dy;
+        if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+        const nk = ny * W + nx;
+        if (mask[nk] && !seen[nk]) { seen[nk] = 1; stack.push(nk); }
+      }
+    }
+    if (n >= 3) comps.push({ n, minX, minY, maxX, maxY });
+  }
+  // Nahe Teilstücke zusammenfassen (dünne Ringe sind im Foto oft unterbrochen)
+  const GAP = Math.round(W * 0.03);
+  const near = (a, b) => a.minX - GAP <= b.maxX && b.minX - GAP <= a.maxX && a.minY - GAP <= b.maxY && b.minY - GAP <= a.maxY;
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < comps.length && !merged; i++) for (let j = i + 1; j < comps.length && !merged; j++) {
+      if (near(comps[i], comps[j])) {
+        const a = comps[i], b = comps[j];
+        comps[i] = { n: a.n + b.n, minX: Math.min(a.minX, b.minX), minY: Math.min(a.minY, b.minY), maxX: Math.max(a.maxX, b.maxX), maxY: Math.max(a.maxY, b.maxY) };
+        comps.splice(j, 1); merged = true;
+      }
+    }
+  }
+  const best = comps.sort((a, b) => b.n - a.n)[0];
+  if (!best || best.n < 10) return withBox({ kind: "none" });
+  const { n, minX, minY, maxX, maxY } = best;
+  const w = maxX - minX + 1, h = maxY - minY + 1, fill = n / (w * h);
+  // Riesige Flächen sind bläulicher Gehäuseton, keine LED
+  if (w > W * 0.6 || h > H * 0.6) return withBox({ kind: "none", reason: "zu groß" });
+  let kind = "dot";
+  if (w / h > 3) kind = "band";
+  else if (h / w > 3) kind = "vband";
+  else if (fill < 0.4 && w > W * 0.06) kind = "ring";
+  const p = (v, t) => Math.round((v / t) * 1000) / 10;
+  return withBox({ kind, x: p(minX, W), y: p(minY, H), w: p(w, W), h: p(h, H), n });
+}
+
+(async () => {
+  const db = await fetch("device-db.base.json").then((r) => r.json());
+  const out = {}, grid = document.getElementById("grid");
+  let done = 0;
+  await Promise.all(db.map(async (e) => {
+    const card = document.createElement("div"); card.className = "c";
+    try {
+      const img = await load(urlOf(e.img));
+      const l = analyze(img);
+      out[e.sku] = l;
+      card.innerHTML = `<div class="w"><img src="${img.src}">${l.kind !== "none" ? `<div class="box ${l.kind}" style="left:${l.x}%;top:${l.y}%;width:${l.w}%;height:${l.h}%"></div>` : ""}</div>
+        <div class="n">${e.name}</div><div class="k">${e.kind} · LED: ${l.kind}</div>`;
+    } catch (err) {
+      out[e.sku] = { kind: "none", error: true };
+      card.innerHTML = `<div class="n">${e.name}</div><div class="k">Bild lädt nicht</div>`;
+    }
+    grid.appendChild(card);
+    document.getElementById("status").textContent = `${++done}/${db.length}`;
+  }));
+  const stats = Object.values(out).reduce((a, l) => ((a[l.error ? "error" : l.kind] = (a[l.error ? "error" : l.kind] || 0) + 1), a), {});
+  document.getElementById("status").textContent = `fertig: ${JSON.stringify(stats)}`;
+  window.LED_RESULT = out;
+  try { await fetch("http://127.0.0.1:8766/device-db-leds", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(out) }); } catch {}
+})();
+</script>
+</body>
+</html>

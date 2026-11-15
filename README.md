@@ -1,118 +1,125 @@
 # UniFi Network Card
 
-Lovelace-Karte für die offizielle **UniFi Network**-Integration von Home Assistant.
-Zeigt **UDR7 und U7 Lite mit den offiziellen Ubiquiti-Produktfotos**. Der Gerätestatus wird
-direkt auf der echten Status-LED dargestellt: Normal bleibt das Original-Blau, bei Update oder
-Provisionierung leuchtet sie orange und pulsiert, offline wird das Gerät ausgegraut.
-Dazu Status, Clients, Laufzeit, CPU/RAM, Temperatur, Durchsatz, Ports inkl. PoE,
-Firmware-Updates und ein Neustart-Button. Andere Modelle (und UDR7/U7 Lite, falls ein Foto
-nicht lädt) bekommen eine gezeichnete Grafik nach echtem Vorbild.
+**English** · [Deutsch](README.de.md)
 
-## Produktfotos
+A Home Assistant Lovelace card for the official **UniFi Network** integration. It shows your gateways,
+access points and switches with **real Ubiquiti product photos**, live status on the device's actual
+status LED, clients, uptime, CPU/RAM, temperature, ports with link speed and PoE, firmware updates and
+a restart button. Everything can be configured in the visual editor, so no YAML is needed.
 
-Die Fotos werden zur Laufzeit von Ubiquitis Bild-CDN (`images.svc.ui.com`) geladen, also vom
-Browser, der das Dashboard anzeigt. Ohne Internet (oder für weitere Modelle) kannst du eigene
-Bilder verwenden: transparentes PNG nach `/config/www/unifi/` legen und im Karten-Editor beim
-jeweiligen Gerät unter **Eigenes Bild** z. B. `/local/unifi/mein-ap.png` eintragen. Mit dem Schalter
-**Original-Produktfotos verwenden** kannst du die Fotos ganz abschalten.
+<table>
+  <tr>
+    <td><img src="docs/overview-light.png" alt="Card in light mode" width="380"></td>
+    <td><img src="docs/overview-dark.png" alt="Card in dark mode" width="380"></td>
+  </tr>
+</table>
 
-Die Entitäten werden **automatisch über das Gerät** gefunden – egal wie die Entity-IDs heißen.
+## Features
+
+- **Over 200 UniFi models recognised automatically**: Dream Machines, Dream Routers, Cloud Gateways,
+  UniFi Express, U6/U7/E7/AC access points, Lite/Flex/Pro/Ultra/Enterprise switches and more.
+  Detection uses Ubiquiti's internal model code (e.g. `UDMA67A` = Dream Router 7), so it works even
+  if you renamed the device.
+- **Real product photos** from Ubiquiti, cropped to the device. Wide devices such as rack gateways and
+  switches are shown in landscape.
+- **Status on the real LED**: the original blue light while online; when the device is updating or
+  provisioning, its LED ring or bar lights up orange and pulses. Offline devices are greyed out.
+- **Ports** with link speed (`1 Gbit/s`, `2.5 Gbit/s`, `getrennt` = disconnected), link LED, PoE
+  indicator and power. SFP+ ports are included.
+- Clients, uptime, CPU, RAM, temperature, WAN latency, PoE budget, firmware version and update badge,
+  restart button (with confirmation).
+- **Light, dark or automatic** design (follows your Home Assistant theme).
+- **Language independent**: sensors are detected by type and by English or German names.
+- Click any value, port or the photo to open its details; click the device name to open the device page.
+
+<img src="docs/gallery.png" alt="Gallery of supported devices" width="780">
 
 ## Installation
 
-### Über HACS (empfohlen)
+### HACS (recommended)
 
-1. **HACS → ⋮ → Benutzerdefinierte Repositories**
-2. Repository-URL `https://github.com/Biolaxy/unifi-network-card` eintragen, Typ **Dashboard**, hinzufügen.
-3. „UniFi Network Card“ suchen und herunterladen. HACS registriert die Ressource automatisch.
-4. Seite neu laden (Strg/Cmd + Shift + R) und im Dashboard **Karte hinzufügen → „UniFi Network Card“** wählen.
+1. **HACS → ⋮ → Custom repositories**
+2. Add `https://github.com/Biolaxy/unifi-network-card` with type **Dashboard**.
+3. Search for "UniFi Network Card" and download it. HACS registers the resource automatically.
+4. Reload the page (Ctrl/Cmd + Shift + R) and add the card: **Add card → "UniFi Network Card"**.
 
-Updates erscheinen danach automatisch in HACS.
+### Manual
 
-### Manuell
+1. Copy `unifi-network-card.js` to `/config/www/`.
+2. **Settings → Dashboards → ⋮ → Resources → Add resource**
+   - URL: `/local/unifi-network-card.js?v=1.4.0`
+   - Type: **JavaScript module**
+3. Reload the page (Ctrl/Cmd + Shift + R) and add the card.
 
-1. `unifi-network-card.js` nach `/config/www/` kopieren (z. B. mit der App „File editor“ oder „Samba share“).
-2. **Einstellungen → Dashboards → ⋮ → Ressourcen → Ressource hinzufügen**
-   - URL: `/local/unifi-network-card.js?v=1.3.4`
-   - Typ: **JavaScript-Modul**
-3. Browser-Cache leeren bzw. Seite neu laden (Strg/Cmd + Shift + R).
-4. Im Dashboard **Karte hinzufügen → „UniFi Network Card“** wählen.
+## Enable the sensors
 
-Nach einem Update der Datei die Versionsnummer in der Ressourcen-URL hochzählen.
+The UniFi Network integration **disables many sensors by default**. Enable the ones you want under
+**Settings → Devices & services → UniFi Network → your device → Entities**, for example:
 
-## Wichtig: Sensoren aktivieren
+- *Clients*, *CPU temperature*, *WAN latency* (e.g. Cloudflare)
+- per port: *Link speed* (including SFP+), *PoE*, *PoE power*
 
-Viele UniFi-Sensoren sind standardmäßig **deaktiviert**. Damit die Karte etwas anzeigen kann:
-**Einstellungen → Geräte & Dienste → UniFi Network → Gerät (z. B. UDR7) → Entitäten**
-und u. a. diese aktivieren:
+*Uptime*, *State*, *CPU* and *Memory utilization* are enabled by default.
 
-- *Clients*, *CPU-Temperatur*, *WAN-Latenz* (z. B. Cloudflare)
-- je Port: *Verbindungsgeschwindigkeit* (auch SFP+), *PoE*, *PoE-Leistung*
+## Configuration (visual editor)
 
-*Betriebszeit*, *Zustand*, *CPU-* und *Speicherauslastung* sind bereits aktiv. Die Karte erkennt die
-Sensoren am Typ und an englischen wie deutschen Namen, funktioniert also unabhängig von der HA-Sprache.
+**Appearance:** title, design (automatic / light / dark), original product photos on/off,
+show or hide ports, firmware and restart button.
 
-## Konfiguration – komplett grafisch
+**Devices:** pick devices, or leave empty to show all UniFi devices automatically.
 
-Alles lässt sich im Karten-Editor einstellen, YAML ist nicht nötig:
+**Order:** move devices up and down with the arrow buttons.
 
-**Darstellung**
-- Titel, Design (Automatisch / Hell / Dunkel)
-- Original-Produktfotos an/aus
-- Ports, Firmware & Updates und Neustart-Button ein-/ausblenden
-
-**Geräte**
-- Geräte auswählen – leer lassen zeigt alle UniFi-Geräte automatisch
-
-**Pro Gerät** (aufklappbarer Bereich je Gerät)
-- Anzeigename
-- Darstellung erzwingen, falls ein Gerät falsch erkannt wird (z. B. „U7 Lite (Foto)“)
-- Eigenes Bild (URL)
+**Per device:** display name, force a model if a device is detected incorrectly, custom image.
 
 <details>
-<summary>YAML-Referenz (optional)</summary>
+<summary>YAML reference (optional)</summary>
 
 ```yaml
 type: custom:unifi-network-card
-title: Netzwerk
-theme: dark                # auto (Standard) | light | dark
-photos: false              # Standard: true
-devices:                   # weglassen = alle UniFi-Geräte automatisch
+title: Network
+theme: dark                # auto (default) | light | dark
+photos: false              # default: true
+devices:                   # omit = all UniFi devices automatically
+  - 1a2b3c4d5e...          # device IDs
+order:                     # display order (device IDs), others follow
+  - 9f8e7d6c...
   - 1a2b3c4d5e...
-overrides:                 # Einstellungen pro Gerät (Geräte-ID)
+overrides:                 # per device (device ID)
   1a2b3c4d5e...:
-    name: AP Wohnzimmer
-    model: u7lite          # udr7, udr, u7lite, u6lite, ap-round, ap-square, switch, gateway
-    image: /local/unifi/mein-ap.png
-show_ports: false          # Standard: true
-show_firmware: false       # Standard: true
-show_restart: false        # Standard: true
+    name: Living room AP
+    model: U7-Pro          # any Ubiquiti SKU, or gateway / ap-round / ap-square / switch (drawn graphic)
+    image: /local/unifi/my-ap.png
+show_ports: false          # default: true
+show_firmware: false       # default: true
+show_restart: false        # default: true
 ```
-
-Die ältere Form mit Objekten in `devices` (`- device: … name: …`) funktioniert weiterhin und wird
-beim Öffnen im Editor automatisch übernommen.
 </details>
 
-## Bedienung
+## Product photos
 
-- Klick auf Grafik, Werte oder Ports → Detail-Dialog der jeweiligen Entität
-- Klick auf den Gerätenamen → Geräteseite in HA
-- Neustart fragt vorher nach
+The photos are loaded at display time from Ubiquiti's image service (`images.svc.ui.com`), so the
+browser showing the dashboard needs internet access. Without it, or for your own pictures, place a
+transparent PNG in `/config/www/unifi/` and set it as **Custom image** for the device
+(e.g. `/local/unifi/my-ap.png`). If a photo cannot be loaded, the card falls back to a drawn graphic.
 
-## Testen ohne Home Assistant
+## Development
 
-`test.html` enthält simulierte Daten (UDR7, U7 Lite online/offline), `editor-test.html` prüft die
-Logik des grafischen Editors, `test-de.html` die Erkennung deutscher Entitäten (Dream Router 7 / U7 Lite). Im Ordner einen
-lokalen Webserver starten und `http://localhost:8765/test.html` öffnen (`#dark` für Dunkelmodus):
+- `demo.html`: demo with simulated devices (`?set=home|gateways|aps|switches|all`, `&split`, `#dark`).
+- `test.html`, `test-de.html`, `editor-test.html`: tests for rendering, German entity names and the editor.
+- `tools/`: rebuilds the device list from Ubiquiti's public data
+  (`static.ui.com/fingerprint/ui/public.json` and techspecs.ui.com), detects the status LED and the
+  device outline in each photo (`analyze-leds.html`) and creates the README images (`snapshot.js`).
+  See the comments in `tools/build-device-db.mjs`.
 
 ```bash
-python3 -m http.server 8765
+python3 -m http.server 8765   # then open http://localhost:8765/demo.html
 ```
 
-## Hinweis
+## Disclaimer
 
-Kein offizielles Produkt von Ubiquiti und nicht mit Ubiquiti verbunden. UniFi ist eine Marke von
-Ubiquiti Inc. Die Produktfotos gehören Ubiquiti. Sie sind nicht Teil dieses Repositorys, sondern werden
-beim Anzeigen direkt von Ubiquitis Servern geladen.
+Not an official Ubiquiti product and not affiliated with Ubiquiti Inc. UniFi is a trademark of
+Ubiquiti Inc. Product photos are property of Ubiquiti. The card loads them directly from Ubiquiti's
+servers; the screenshots in `docs/` show them for illustration only.
 
-Lizenz: MIT
+License: MIT

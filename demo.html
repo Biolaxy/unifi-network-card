@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UniFi Network Card – Demo</title>
+<style>
+  :root { --primary-text-color:#1c1c1e; --secondary-text-color:#6b7078; --secondary-background-color:#f2f3f5; --divider-color:#e6e7ea; --card-background-color:#fff; }
+  body { background:#eef0f3; font-family:Roboto,system-ui,-apple-system,sans-serif; margin:0; padding:20px;
+    display:grid; gap:20px; grid-template-columns:repeat(auto-fill, minmax(380px, 1fr)); align-items:start; }
+  body.dark { --primary-text-color:#f2f2f4; --secondary-text-color:#9a9ca3; --secondary-background-color:#2a2a2d; --divider-color:#333338; --card-background-color:#1c1c1e; background:#111214; }
+  unifi-network-card { display:block; }
+  ha-icon { display:none; }
+</style>
+</head>
+<body>
+<script>
+// Demo mit simulierten Daten. Parameter: ?set=home|gateways|aps|switches|all  #dark für Dunkelmodus
+if (location.hash === "#dark") document.body.classList.add("dark");
+document.write('<script src="unifi-network-card.js?t=' + Date.now() + '"><\/script>');
+</script>
+<script>
+const SETS = {
+  home: [["UDR7", "Dream Router 7"], ["U7-Lite", "AP Flur"], ["U7-Pro", "AP Wohnzimmer"], ["USW-Lite-8-PoE", "Switch Büro"]],
+  gateways: [["UDM-Pro", "Dream Machine Pro"], ["UCG-Ultra", "Cloud Gateway Ultra"], ["UX7", "UniFi Express 7"], ["UDR", "Dream Router"]],
+  aps: [["U7-Pro-Max", "U7 Pro Max"], ["U6-Lite", "U6 Lite"], ["U6-LR", "U6 Long-Range"], ["UAP-AC-LITE", "AC Lite"], ["U7-Outdoor", "U7 Outdoor"], ["U6-Mesh", "U6 Mesh"]],
+  switches: [["USW-Pro-24-POE", "Pro 24 PoE"], ["USW-Flex-Mini", "Flex Mini"], ["USW-Ultra", "Ultra"]],
+};
+SETS.all = [...SETS.gateways, ...SETS.aps, ...SETS.switches];
+const params = new URLSearchParams(location.search);
+const set = SETS[params.get("set") || "home"] || SETS.home;
+const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
+const states = {}, entities = {}, devices = {};
+let seed = 7; const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+set.forEach(([sku, name], i) => {
+  const e = DEVICE_DB.find((x) => x.sku.toLowerCase() === sku.toLowerCase());
+  const id = "dev" + i, slug = "d" + i;
+  devices[id] = { id, name, model: e.models[0], manufacturer: "Ubiquiti Networks", sw_version: e.kind === "gateway" ? "4.1.13" : "7.1.66" };
+  const add = (eid, state, attrs = {}) => { states[eid] = { state: String(state), attributes: attrs, last_updated: ago(5) }; entities[eid] = { entity_id: eid, device_id: id, platform: "unifi" }; };
+  add(`sensor.${slug}_state`, params.get("busy") == i ? "upgrading" : "connected", { device_class: "enum", options: ["connected", "upgrading"] });
+  add(`sensor.${slug}_uptime`, ago(86400 * (2 + i * 3) + 3600 * (i + 4)), { device_class: "timestamp" });
+  add(`sensor.${slug}_cpu_utilization`, Math.round(8 + rnd() * 40), { unit_of_measurement: "%" });
+  add(`sensor.${slug}_memory_utilization`, Math.round(35 + rnd() * 35), { unit_of_measurement: "%" });
+  add(`update.${slug}`, i === 0 ? "on" : "off", { installed_version: devices[id].sw_version, latest_version: i === 0 ? "4.2.8" : devices[id].sw_version });
+  add(`button.${slug}_restart`, "unknown", { device_class: "restart" });
+  if (e.kind !== "switch") add(`sensor.${slug}_clients`, Math.round(4 + rnd() * 30));
+  if (e.kind !== "ap") add(`sensor.${slug}_temperature`, Math.round(42 + rnd() * 18), { device_class: "temperature", unit_of_measurement: "°C" });
+  const ports = e.kind === "switch" ? (/24/.test(sku) ? 12 : 8) : e.kind === "gateway" ? 5 : 0;
+  for (let p = 1; p <= ports; p++) {
+    const speed = [1000, 1000, 2500, 100, 10, 1000, 10, 1000][(p + i) % 8];
+    add(`sensor.${slug}_port_${p}_link_speed`, speed, { device_class: "data_rate", unit_of_measurement: "Mbit/s", friendly_name: `${name} Port ${p} Link Speed` });
+    if (p <= 2) {
+      add(`switch.${slug}_port_${p}_poe`, speed > 10 ? "on" : "off", { friendly_name: `${name} Port ${p} PoE` });
+      add(`sensor.${slug}_port_${p}_poe_power`, speed > 10 ? +(3 + rnd() * 6).toFixed(1) : 0, { device_class: "power", unit_of_measurement: "W", friendly_name: `${name} Port ${p} PoE Power` });
+    }
+  }
+});
+const hass = { states, entities, devices, callService: () => {} };
+const card = document.createElement("unifi-network-card");
+card.setConfig({ title: params.get("title") || "Netzwerk", theme: params.get("theme") || "auto" });
+card.hass = hass;
+document.body.appendChild(card);
+// Zweite Spalte: einzelne Karten pro Gerät, wenn ?split
+if (params.has("split")) {
+  card.remove();
+  Object.keys(devices).forEach((id) => { const c = document.createElement("unifi-network-card"); c.setConfig({ devices: [id], theme: params.get("theme") || "auto" }); c.hass = hass; document.body.appendChild(c); });
+}
+</script>
+</body>
+</html>
