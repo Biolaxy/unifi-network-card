@@ -19,6 +19,9 @@ if (location.hash === "#dark") document.body.classList.add("dark");
 document.write('<script src="unifi-network-card.js?t=' + Date.now() + '"><\/script>');
 </script>
 <script>
+// Echte Portzahlen aus Ubiquitis Daten (tools/device-db.base.json); synchron laden, damit die Demo sofort steht
+const PORTS = (() => { try { const x = new XMLHttpRequest(); x.open("GET", "tools/device-db.base.json", false); x.send();
+  return Object.fromEntries(JSON.parse(x.responseText).map((e) => [e.sku.toLowerCase(), e.ports])); } catch { return {}; } })();
 const SETS = {
   home: [["UDR7", "Dream Router 7"], ["U7-Lite", "AP Flur"], ["U7-Pro", "AP Wohnzimmer"], ["USW-Lite-8-PoE", "Switch Büro"]],
   gateways: [["UDM-Pro", "Dream Machine Pro"], ["UCG-Ultra", "Cloud Gateway Ultra"], ["UX7", "UniFi Express 7"], ["UDR", "Dream Router"]],
@@ -44,7 +47,8 @@ set.forEach(([sku, name], i) => {
   add(`button.${slug}_restart`, "unknown", { device_class: "restart" });
   if (e.kind !== "switch") add(`sensor.${slug}_clients`, Math.round(4 + rnd() * 30));
   if (e.kind !== "ap") add(`sensor.${slug}_temperature`, Math.round(42 + rnd() * 18), { device_class: "temperature", unit_of_measurement: "°C" });
-  const ports = e.kind === "switch" ? (/24/.test(sku) ? 12 : 8) : e.kind === "gateway" ? 5 : 0;
+  // Access Points haben in der UniFi-Integration keine Port-Sensoren
+  const ports = e.kind === "ap" ? 0 : PORTS[sku.toLowerCase()] || (e.kind === "switch" ? 8 : 5);
   for (let p = 1; p <= ports; p++) {
     const speed = [1000, 1000, 2500, 100, 10, 1000, 10, 1000][(p + i) % 8];
     add(`sensor.${slug}_port_${p}_link_speed`, speed, { device_class: "data_rate", unit_of_measurement: "Mbit/s", friendly_name: `${name} Port ${p} Link Speed` });
