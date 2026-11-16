@@ -48,7 +48,7 @@ a restart button. Everything can be configured in the visual editor, so no YAML 
 
 1. Copy `unifi-network-card.js` to `/config/www/`.
 2. **Settings → Dashboards → ⋮ → Resources → Add resource**
-   - URL: `/local/unifi-network-card.js?v=1.5.0`
+   - URL: `/local/unifi-network-card.js?v=1.5.1`
    - Type: **JavaScript module**
 3. Reload the page (Ctrl/Cmd + Shift + R) and add the card.
 
@@ -108,7 +108,7 @@ transparent PNG in `/config/www/unifi/` and set it as **Custom image** for the d
 ## Development
 
 - `demo.html`: demo with simulated devices (`?set=home|gateways|aps|switches|all`, `&lang=en|de`, `&split`, `#dark`).
-- `test.html`, `test-de.html`, `editor-test.html`: tests for rendering, German entity names, languages, drag & drop and the editor.
+- `test.html`, `test-de.html`, `editor-test.html`, `scroll-test.html`: tests for rendering, German entity names, languages, drag & drop, the editor and stable updates (no scroll jumps).
 - `tools/`: rebuilds the device list from Ubiquiti's public data
   (`static.ui.com/fingerprint/ui/public.json` and techspecs.ui.com), detects the status LED and the
   device outline in each photo (`analyze-leds.html`) and creates the README images (`snapshot.js`).

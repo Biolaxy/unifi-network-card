@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scroll-Test</title>
+<style>
+  :root { --primary-text-color:#1c1c1e; --secondary-text-color:#6b7078; --secondary-background-color:#f2f3f5; --divider-color:#e6e7ea; }
+  body { margin:0; padding:16px; background:#eef0f3; font-family:system-ui, sans-serif; }
+  .spacer { height:900px; background:repeating-linear-gradient(#e3e6ea 0 40px, #eef0f3 40px 80px); border-radius:12px; margin:16px 0; }
+  #out { position:fixed; top:8px; right:8px; background:#fff; padding:8px 12px; border-radius:8px; font:12px monospace; box-shadow:0 2px 8px rgba(0,0,0,.15); white-space:pre; }
+  ha-icon { display:inline-block; width:14px; height:14px; }
+</style>
+</head>
+<body>
+<div class="spacer"></div>
+<div id="slot" style="max-width:480px"></div>
+<div class="spacer"></div>
+<div id="out">…</div>
+<script>document.write('<script src="unifi-network-card.js?t=' + Date.now() + '"><\/script>');</script>
+<script>
+// Prüft, ob Aktualisierungen der Karte die Scrollposition bzw. die Kartenhöhe verändern.
+const ago = (s) => new Date(Date.now() - s * 1000).toISOString();
+const states = {}, entities = {};
+const add = (id, dev, state, attrs = {}) => { states[id] = { state: String(state), attributes: attrs, last_updated: ago(2) }; entities[id] = { entity_id: id, device_id: dev, platform: "unifi" }; };
+add("sensor.r_zustand", "udr", "connected", { device_class: "enum", options: ["connected"] });
+add("sensor.r_betriebszeit", "udr", ago(90000), { device_class: "timestamp" });
+add("sensor.r_clients", "udr", 9);
+add("sensor.r_cpu_auslastung", "udr", 50, { unit_of_measurement: "%" });
+add("sensor.r_speicherauslastung", "udr", 58, { unit_of_measurement: "%" });
+for (let p = 1; p <= 4; p++) add(`sensor.r_port_${p}_verbindungsgeschwindigkeit`, "udr", [100, 1000, 10, 10][p - 1], { device_class: "data_rate", unit_of_measurement: "Mbit/s", friendly_name: `Dream Router 7 Port ${p} Verbindungsgeschwindigkeit` });
+add("update.r_firmware", "udr", "off", { installed_version: "6.0.17" });
+add("button.r_neu_starten", "udr", "unknown", { device_class: "restart" });
+add("sensor.a_zustand", "ap", "connected", { device_class: "enum", options: ["connected"] });
+add("sensor.a_clients", "ap", 12);
+add("sensor.a_cpu_auslastung", "ap", 2, { unit_of_measurement: "%" });
+let hass = { states, entities, callService: () => {}, locale: { language: "de" },
+  devices: { udr: { id: "udr", name: "Dream Router 7", model: "UDMA67A", manufacturer: "Ubiquiti Networks" }, ap: { id: "ap", name: "U7 Lite", model: "UAPA693", manufacturer: "Ubiquiti Networks" } } };
+const card = document.createElement("unifi-network-card");
+card.setConfig({});
+card.hass = hass;
+document.getElementById("slot").appendChild(card);
+
+// Höhenänderungen der Karte mitschreiben (jede Änderung kann Layout und Scrollposition beeinflussen)
+const heights = [];
+new ResizeObserver((e) => heights.push(Math.round(e[0].contentRect.height))).observe(card);
+
+window.runUpdates = async (n = 30) => {
+  const y0 = window.scrollY, h0 = card.getBoundingClientRect().height, nodes0 = card.shadowRoot.querySelectorAll("*").length;
+  const ha = card.shadowRoot.querySelector("ha-card");
+  heights.length = 0;
+  for (let i = 0; i < n; i++) {
+    const st = { ...hass.states };
+    st["sensor.r_cpu_auslastung"] = { ...st["sensor.r_cpu_auslastung"], state: String(20 + (i % 50)), last_updated: "x" + i };
+    st["sensor.a_clients"] = { ...st["sensor.a_clients"], state: String(10 + (i % 3)), last_updated: "y" + i };
+    hass = { ...hass, states: st };
+    card.hass = hass;
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  }
+  const res = {
+    scrollBefore: y0, scrollAfter: window.scrollY,
+    heightBefore: Math.round(h0), heightAfter: Math.round(card.getBoundingClientRect().height),
+    heightChanges: [...new Set(heights)],
+    haCardReplaced: ha !== card.shadowRoot.querySelector("ha-card"),
+    elementsKept: nodes0 === card.shadowRoot.querySelectorAll("*").length,
+  };
+  document.getElementById("out").textContent = JSON.stringify(res, null, 1);
+  return res;
+};
+</script>
+</body>
+</html>

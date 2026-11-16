@@ -3,7 +3,7 @@
  * Realistische SVG-Darstellung (UDR7, U7 Lite, generische APs/Switches/Gateways),
  * automatische Entitätserkennung pro Gerät, Ports, Clients, Firmware, Neustart.
  */
-const UNC_VERSION = "1.5.0";
+const UNC_VERSION = "1.5.1";
 
 /* ---------- Sprache (Deutsch / Englisch) ---------- */
 const I18N = {
@@ -738,6 +738,23 @@ ha-card.dark { --ha-card-background:#1c1c1e; background:#1c1c1e; color:#f2f2f4; 
 @media (prefers-reduced-motion: reduce) { .blink, .led.busy { animation:none; } }
 `;
 
+/* ---------- DOM-Abgleich ---------- */
+// Überträgt die Unterschiede von `to` auf `from`, ohne gleichartige Elemente zu ersetzen.
+// Inhalte von Elementen mit data-art-id (Gerätebild) verwaltet _placeArts selbst.
+function morphChildren(from, to) {
+  const fc = [...from.childNodes], tc = [...to.childNodes];
+  for (let i = 0; i < tc.length; i++) {
+    const f = fc[i], t = tc[i];
+    if (!f) { from.appendChild(t); continue; }
+    if (f.nodeType !== t.nodeType || f.nodeName !== t.nodeName) { from.replaceChild(t, f); continue; }
+    if (f.nodeType !== Node.ELEMENT_NODE) { if (f.nodeValue !== t.nodeValue) f.nodeValue = t.nodeValue; continue; }
+    for (const a of [...f.attributes]) if (!t.hasAttribute(a.name)) f.removeAttribute(a.name);
+    for (const a of t.attributes) if (f.getAttribute(a.name) !== a.value) f.setAttribute(a.name, a.value);
+    if (!f.hasAttribute("data-art-id")) morphChildren(f, t);
+  }
+  for (let i = tc.length; i < fc.length; i++) fc[i].remove();
+}
+
 /* ---------- Karte ---------- */
 class UnifiNetworkCard extends HTMLElement {
   static getConfigElement() { return document.createElement("unifi-network-card-editor"); }
@@ -804,7 +821,11 @@ class UnifiNetworkCard extends HTMLElement {
     const body = ids.length
       ? ids.map((id, i) => this._renderDevice(id, i)).join("")
       : `<div class="empty">${esc(t("no_devices"))}</div>`;
-    this.shadowRoot.innerHTML = `<style>${STYLE}</style><ha-card class="${["light", "dark"].includes(this._config.theme) ? this._config.theme : ""}">${title}${body}</ha-card>`;
+    const tpl = document.createElement("template");
+    tpl.innerHTML = `<style>${STYLE}</style><ha-card class="${["light", "dark"].includes(this._config.theme) ? this._config.theme : ""}">${title}${body}</ha-card>`;
+    // Vorhandene Elemente nur abgleichen statt neu erzeugen: ha-card, Knöpfe und Fokus bleiben erhalten,
+    // die Kartenhöhe springt nicht und das Dashboard behält seine Scrollposition.
+    morphChildren(this.shadowRoot, tpl.content);
     this._placeArts();
   }
 
@@ -826,7 +847,8 @@ class UnifiNetworkCard extends HTMLElement {
         cached = { html, node };
         this._arts.set(id, cached);
       }
-      stage.appendChild(cached.node);
+      for (const c of [...stage.childNodes]) if (c !== cached.node) c.remove();
+      if (cached.node.parentNode !== stage) stage.appendChild(cached.node);
     }
     for (const id of [...this._arts.keys()]) if (!pending.has(id)) this._arts.delete(id);
     this._pendingArts = new Map();

@@ -49,7 +49,7 @@ YAML ist nicht nötig.
 
 1. `unifi-network-card.js` nach `/config/www/` kopieren.
 2. **Einstellungen → Dashboards → ⋮ → Ressourcen → Ressource hinzufügen**
-   - URL: `/local/unifi-network-card.js?v=1.5.0`
+   - URL: `/local/unifi-network-card.js?v=1.5.1`
    - Typ: **JavaScript-Modul**
 3. Seite neu laden (Strg/Cmd + Shift + R) und die Karte hinzufügen.
 
@@ -112,7 +112,7 @@ nach `/config/www/unifi/` legen und beim Gerät als **Eigenes Bild** eintragen (
 ## Entwicklung
 
 - `demo.html`: Demo mit simulierten Geräten (`?set=home|gateways|aps|switches|all`, `&lang=de|en`, `&split`, `#dark`).
-- `test.html`, `test-de.html`, `editor-test.html`: Tests für Darstellung, deutsche Entitätsnamen, Sprachen, Drag & Drop und Editor.
+- `test.html`, `test-de.html`, `editor-test.html`, `scroll-test.html`: Tests für Darstellung, deutsche Entitätsnamen, Sprachen, Drag & Drop, Editor und ruhige Aktualisierung (kein Springen).
 - `tools/`: baut die Geräteliste aus Ubiquitis öffentlichen Daten neu
   (`static.ui.com/fingerprint/ui/public.json` und techspecs.ui.com), ermittelt Status-LED und
   Geräteumriss in jedem Foto (`analyze-leds.html`) und erstellt die README-Bilder (`snapshot.js`).
